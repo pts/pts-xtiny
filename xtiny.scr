@@ -1,0 +1,122 @@
+/*
+ * xtiny.scr -- a GNU ld(1) linker script for emitting small ELF binaries for C programs
+ * by pts@fazekas.hu at Sun Oct 19 13:06:04 CEST 2014
+ *
+ * * GNU ld(1) and a Linux i386 system is required
+ * * Usage: gcc -m32 -Os -nostdlib -W,-T,tiny.scr src*.c
+ * * C++ not supported (because of constructor etc. sections)
+ * * You need to define your own _start function (not a _main).
+ * * Code execution will be much faster if you replace the 1 in the ALIGN(1)
+ *   and SUBALIGN(1) calls below with 4. But it may add a couple of \0 bytes
+ *   to the output file.
+ */
+
+OUTPUT_FORMAT(binary)
+TARGET(elf32-little)
+
+SECTIONS {
+  __myorg = 0x08048000;  /* Moves only relocation offsets. */
+  . = __myorg;
+  .text . : ALIGN(1) SUBALIGN(1) {
+    /* ABSOLUTE(.) is necessary instead of . inside a section for ld. */
+    __ehdr = ABSOLUTE(.); /* __ehdr: ; Elf32_Ehdr */
+    BYTE(0x7F) BYTE(69) BYTE(76) BYTE(70) BYTE(1) BYTE(1) BYTE(1)
+    /* ^^^    db      0x7F, "ELF", 1, 1, 1            ;   0 e_ident */
+    LONG(0) LONG(0) BYTE(0)
+    /* ^^^   times 9 db      0 */
+    SHORT(2) SHORT(3)
+    /* ^^^    dw      2, 3                            ;   16 e_type, e_machine */
+    LONG(1)
+    /* ^^^    dd      1                               ;   20 e_version */
+    LONG(_start)
+    /* ^^^    dd      _start                          ;   24 e_entry */
+    LONG(__phdr - __myorg)
+    /* ^^^    dd      __phdr - $$                     ;   28 e_phoff */
+    LONG(0) LONG(0)
+    /* ^^^    dd      0, 0                            ;   32 e_shoff, e_flags */
+    SHORT(__ehdrsize) SHORT(__phdrsize)
+    /* ^^^    dw      __ehdrsize, __phdrsize          ;   40 e_ehsize, e_phentsize */
+    SHORT(1) SHORT(0) SHORT(0) SHORT(0)
+    /* ^^^    dw      1, 0, 0, 0                      ;   e_phnum, e_shentsize, e_shnum, e_shstrndx */
+    __ehdrsize = ABSOLUTE(.) - __ehdr; /* __ehdrsize equ $ - __ehdr; */
+    __phdr = ABSOLUTE(.); /* ; Elf32_Phdr */
+    LONG(1) LONG(0) LONG(__myorg) LONG(__myorg)
+    /* ^^^    dd      1, 0, $$, $$                    ;   p_type, p_offset, p_vaddr, p_paddr */
+    LONG(__p_filesz - __myorg)
+    /* ^^^    dd      __p_filesz - __myorg            ;   p_filesz */
+    LONG(__p_memsz - __myorg)
+    /* ^^^    dd      __p_memsz - __myorg             ;   p_memsz */
+    LONG(7) LONG(0x1000)
+    /* ^^^    dd      7, 0x1000                       ;   p_flags (1=executable 2=writable 4=readable), p_align */
+    __phdrsize = ABSOLUTE(.) - __phdr; /* __phdrsize equ $ - __phdr */
+
+    _start = ABSOLUTE(.);
+    /* This is hand-optimized assembly code of 43 bytes, `gcc-4.6 -Os'
+     * generates 53 bytes.
+     *
+     * The addresses in the assembly dump below are relative to the first
+     * intruction.
+     */
+    BYTE(0x8D) BYTE(0x5C) BYTE(0x24) BYTE(0x04)
+    /* ^^^ 00000000  8D5C2404          lea ebx,[esp+0x4] */
+    BYTE(0x89) BYTE(0xDA)
+    /* ^^^ 00000004  89DA              mov edx,ebx */
+    BYTE(0x31) BYTE(0xC0)
+    /* ^^^ 00000006  31C0              xor eax,eax */
+    BYTE(0x83) BYTE(0xC3) BYTE(0x04)
+    /* ^^^ 00000008  83C304            add ebx,byte +0x4 */
+    BYTE(0x3B) BYTE(0x03)
+    /* ^^^ 0000000B  3B03              cmp eax,[ebx] */
+    BYTE(0x75) BYTE(0xF9)
+    /* ^^^ 0000000D  75F9              jnz 0x8 */
+    BYTE(0x8D) BYTE(0x4B) BYTE(0x04)
+    /* ^^^ 0000000F  8D4B04            lea ecx,[ebx+0x4] */
+    BYTE(0x29) BYTE(0xD3)
+    /* ^^^ 00000012  29D3              sub ebx,edx */
+    BYTE(0xC1) BYTE(0xEB) BYTE(0x02)
+    /* ^^^ 00000014  C1EB02            shr ebx,0x2 */
+    BYTE(0x89) BYTE(0x0D) LONG(environ)
+    /* ^^^ 00000017  890D????????      mov [environ],ecx */
+    BYTE(0x51)
+    /* ^^^ 0000001D  51                push ecx */
+    BYTE(0x52)
+    /* ^^^ 0000001E  52                push edx */
+    BYTE(0x53)
+    /* ^^^ 0000001F  53                push ebx */
+    BYTE(0xE8) LONG(main - . - 4)
+    /* ^^^ 00000020  E8????????        call main */
+    BYTE(0x93)
+    /* ^^^ 00000025  93                xchg eax,ebx */
+    BYTE(0x31) BYTE(0xC0)
+    /* ^^^ 00000026  31C0              xor eax,eax */
+    BYTE(0x40)
+    /* ^^^ 00000028  40                inc eax */
+    BYTE(0xCD) BYTE(0x80)
+    /* ^^^ 00000029  CD80              int 0x80 */
+    /* No need to specify here: . = ALIGN(4), because SUBALIGN(4) above for
+     * .text.startup and .text takes care of this here.
+     */
+    *(.text)  /* Contains all other functions. */
+    *(.text.*)  /* text.startup contains main(). */
+  }
+  /* TODO(pts): Add other sections (e.g. initializers) as well? */
+  /* We align .data, .rodata and .bss to 4-byte boundary for faster loads on
+   * the data bus.
+   */
+  .data : ALIGN(4) SUBALIGN(4) {
+    *(.data)
+  }
+  .rodata : ALIGN(4) SUBALIGN(4) {
+    *(.rodata) *(.rodata.*)
+  }
+  __p_filesz = .;
+  /* For some reason the contents of this secion will be omitted from the
+   * file. Probably because do real data bytes are added here.
+   */
+  .bss : ALIGN(4) SUBALIGN(4) {
+    __xtiny_errno = ABSOLUTE(.); . += 4;
+    environ = ABSOLUTE(.); . += 4;
+    *(.bss)
+  }
+  __p_memsz = .;
+}
