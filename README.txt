@@ -1,7 +1,7 @@
 README for pts-xtiny
 ^^^^^^^^^^^^^^^^^^^^
 pts-xtiny is a collection of tools and a small and incomplete libc for
-creating tiny (200-byte), statically linked ELF executables on Linux i386. 
+creating tiny (200-byte), statically linked ELF executables on Linux i386.
 
 pts-xtiny was inspired by the tiny ELF assembly header in ``A Whirlwind
 Tutorial on Creating Really Teensy ELF Executables for Linux''
@@ -18,10 +18,13 @@ Q1. How large is a typical executable?
 A typical Hello, World program is only 200 bytes:
 
   $ ./xtiny gcc examples/hellot.c
-  $ ./a.out 
+  $ ./a.out
   Hello, World!
   $ ls -l a.out
   -rwxr-xr-x 1 pts pts 200 Oct 20 03:15 a.out
+
+The hand-optimized assembly version, compiled from examples/hello.nasm, is
+138 bytes long, 62 bytes shorter.
 
 After the `gcc' in the command above almost all gcc flags are supported (and
 will be passed to gcc). Examples of supported flags: -c, -S, -E, -M, -MM,
@@ -113,5 +116,11 @@ Q12. Does project X already compile?
 """"""""""""""""""""""""""""""""""""
 No, unless project X has a tiny codebase with very few dependencies. The
 culprit is that only a very small fraction of the libc is implemented.
+
+
+Q13. Does profiling work?
+"""""""""""""""""""""""""
+No, `gcc -pg' etc. don't work, because the xtiny libc lacks the
+instrumentation for profile stack trace collection.
 
 __END__
