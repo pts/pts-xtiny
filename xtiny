@@ -74,14 +74,15 @@ def main(argv):
         arg in ('-B', '--sysroot', '--gcc-toolchain', '-target', '-m64',
                 '-sysld', '--sysld', '-p', '-pg', '-pie', '-fpic', '-fPIC',
                 '-fpie', '-fPIE', '-shared', '-shared-libgcc',
-                '-nostdinc++') or
+                '-nostdinc++', '-m64') or
         # -target is Cland-specific.
         arg.startswith('-B') or
         arg.startswith('--sysroot=') or
         arg.startswith('--gcc-toolchain=')):
       sys.stderr.write('error: unsupported xtiny flag: %s\n' % arg)
       sys.exit(1)
-    elif arg in ('-static-libgcc', '-nostdlib', '-nostdinc', '-s', '-static'):
+    elif arg in ('-static-libgcc', '-nostdlib', '-nostdinc', '-s', '-static',
+                 '-m32'):
       continue
     args_kept.append(arg)
   cmd = [compiler, '-m32']
