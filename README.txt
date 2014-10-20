@@ -23,8 +23,12 @@ A typical Hello, World program is only 200 bytes:
   $ ls -l a.out
   -rwxr-xr-x 1 pts pts 200 Oct 20 03:15 a.out
 
+After the `gcc' in the command above almost all gcc flags are supported (and
+will be passed to gcc). Examples of supported flags: -c, -S, -E, -M, -MM,
+-W..., -f..., -m... .
+
 If you forget to specify the `-Os' flag to make the compiler optimize for
-file sie, the `xtiny' wrapper will add it for you. Unless you speciy another
+file size, the `xtiny' wrapper will add it for you. Unless you specify another
 `-O...' flag, the wrapper also adds some other relevant gcc flags to make
 the output file even smaller.
 
