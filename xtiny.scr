@@ -13,6 +13,7 @@
 
 OUTPUT_FORMAT(binary)
 TARGET(elf32-little)
+ENTRY(_start)  /* Without this _start won't be loaded from an .a file. */
 
 SECTIONS {
   __myorg = 0x08048000;  /* Moves only relocation offsets. */
@@ -22,8 +23,9 @@ SECTIONS {
     __ehdr = ABSOLUTE(.); /* __ehdr: ; Elf32_Ehdr */
     BYTE(0x7F) BYTE(69) BYTE(76) BYTE(70) BYTE(1) BYTE(1) BYTE(1)
     /* ^^^    db      0x7F, "ELF", 1, 1, 1            ;   0 e_ident */
-    LONG(0) LONG(0) BYTE(0)
-    /* ^^^   times 9 db      0 */
+    BYTE(3) /* 0=SYSV 3=GNU/Linux */
+    LONG(0) LONG(0)
+    /* ^^^   times 8 db      0 */
     SHORT(2) SHORT(3)
     /* ^^^    dw      2, 3                            ;   16 e_type, e_machine */
     LONG(1)
@@ -49,50 +51,7 @@ SECTIONS {
     LONG(7) LONG(0x1000)
     /* ^^^    dd      7, 0x1000                       ;   p_flags (1=executable 2=writable 4=readable), p_align */
     __phdrsize = ABSOLUTE(.) - __phdr; /* __phdrsize equ $ - __phdr */
-
-    _start = ABSOLUTE(.);
-    /* This is hand-optimized assembly code of 43 bytes, `gcc-4.6 -Os'
-     * generates 53 bytes.
-     *
-     * The addresses in the assembly dump below are relative to the first
-     * intruction.
-     */
-    BYTE(0x8D) BYTE(0x5C) BYTE(0x24) BYTE(0x04)
-    /* ^^^ 00000000  8D5C2404          lea ebx,[esp+0x4] */
-    BYTE(0x89) BYTE(0xDA)
-    /* ^^^ 00000004  89DA              mov edx,ebx */
-    BYTE(0x31) BYTE(0xC0)
-    /* ^^^ 00000006  31C0              xor eax,eax */
-    BYTE(0x83) BYTE(0xC3) BYTE(0x04)
-    /* ^^^ 00000008  83C304            add ebx,byte +0x4 */
-    BYTE(0x3B) BYTE(0x03)
-    /* ^^^ 0000000B  3B03              cmp eax,[ebx] */
-    BYTE(0x75) BYTE(0xF9)
-    /* ^^^ 0000000D  75F9              jnz 0x8 */
-    BYTE(0x8D) BYTE(0x4B) BYTE(0x04)
-    /* ^^^ 0000000F  8D4B04            lea ecx,[ebx+0x4] */
-    BYTE(0x29) BYTE(0xD3)
-    /* ^^^ 00000012  29D3              sub ebx,edx */
-    BYTE(0xC1) BYTE(0xEB) BYTE(0x02)
-    /* ^^^ 00000014  C1EB02            shr ebx,0x2 */
-    BYTE(0x89) BYTE(0x0D) LONG(environ)
-    /* ^^^ 00000017  890D????????      mov [environ],ecx */
-    BYTE(0x51)
-    /* ^^^ 0000001D  51                push ecx */
-    BYTE(0x52)
-    /* ^^^ 0000001E  52                push edx */
-    BYTE(0x53)
-    /* ^^^ 0000001F  53                push ebx */
-    BYTE(0xE8) LONG(main - . - 4)
-    /* ^^^ 00000020  E8????????        call main */
-    BYTE(0x93)
-    /* ^^^ 00000025  93                xchg eax,ebx */
-    BYTE(0x31) BYTE(0xC0)
-    /* ^^^ 00000026  31C0              xor eax,eax */
-    BYTE(0x40)
-    /* ^^^ 00000028  40                inc eax */
-    BYTE(0xCD) BYTE(0x80)
-    /* ^^^ 00000029  CD80              int 0x80 */
+    /* _start is defined in _start.o (compiled from _start.s) in lib__xtiny.a */
     /* No need to specify here: . = ALIGN(4), because SUBALIGN(4) above for
      * .text.startup and .text takes care of this here.
      */
@@ -108,6 +67,15 @@ SECTIONS {
   }
   .rodata : ALIGN(4) SUBALIGN(4) {
     *(.rodata) *(.rodata.*)
+  }
+  .ctors : ALIGN(4) SUBALIGN(4) {
+    *(.ctors)
+    /* This doesn't trigger if there are no .ctors in the input. */
+    ASSERT(0, "Constructors are not supported.");
+  }
+  .dtors : ALIGN(4) SUBALIGN(4) {
+    *(.dtors)
+    ASSERT(0, "Destructors are not supported.");
   }
   __p_filesz = .;
   /* For some reason the contents of this secion will be omitted from the

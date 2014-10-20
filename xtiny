@@ -1,0 +1,130 @@
+#! /usr/bin/python
+# by pts@fazekas.hu at Sun Oct 19 13:46:41 CEST 2014
+#
+# TODO(pts): Convert the xtiny tool from Python to .c.
+# TODO(pts): Add C++ support, possibly for many kinds of initializers.
+# TODO(pts): Make it work with clang: now segfault and large binary for
+#            pts-clang, and bad string constants for regular clang.
+# TODO(pts): Use glibc's smart __extern_always_inline instead?
+# TODO(pts): Add all __builtin_strlen etc.
+# TODO(pts): Add proper C++ `const char*' overloads for strstr etc, like
+#            glibc string.h
+# TODO(pts): With linker script can't find static libraries (*.a).
+# TODO(pts): Why is gcc-4.4 tinyt.c two.c only 424 bytes, but with gcc-4.6 it's
+#            436 bytes?
+# TODO(pts): Hide system library diretories, i.e. -L/usr/lib/i386-linux-gnu
+#            is still specified for ld, so ld -lieee works (but it shouldn't).
+#            We need to hook -ld for that. (--sysroot has no effect.)
+# TODO(pts): doc: What are the similar projects?
+#
+# Sine xtiny.h is in an `-isystem' directory, to get warnings for it,
+# compile it with: `-Werror -Wsystem-headers', in addition to the usual `-W
+# -Wall -Wextra'.
+#
+
+import os
+import os.path
+import pipes
+import stat
+import subprocess
+import sys
+
+
+def main(argv):
+  if len(argv) < 2 or argv[1] == '--help':
+    sys.stderr.write(
+        'Usage: %s <gcc|g++|clang|clang++> [<compiler-arg>...]\n'
+        'Invokes the C/C++ compiler with -static against the xtiny libc\n')
+    sys.exit(1)
+  prog = __file__
+  try:
+    while stat.S_ISLNK(os.lstat(prog).st_mode):
+      prog = os.path.join(os.path.dirname(prog), os.readlink(prog))
+      # TODO(pts): Collapse ..s in the path etc.
+  except OSError, e:
+    pass
+  progdir = os.path.dirname(prog)
+  compiler = argv[1]
+  args = argv[2:]
+  is_verbose = False
+  opt = None
+  has_debug = False
+  do_link = True
+  args_kept = []
+  has_nostdinc = False
+  is_compiling = False
+  for arg in args:
+    if not arg.startswith('-'):
+      ext = os.path.splitext(os.path.basename(arg))[1]
+      if ext in ('.cc', '.cp', '.cxx', '.cpp', '.c++', '.C',  # C++.
+                 '.c', '.i', '.ii', '.m', '.mi', '.mm', '.M', '.mii',
+                 '.h', '.H', '.hp', '.hxx', '.hpp', '.HPP', '.h++', '.tcc',
+                 '.s', '.S', '.sx'):
+        is_compiling = True
+    elif arg == '-v':
+      is_verbose = True
+    elif arg.startswith('-O'):
+      opt = arg
+      continue
+    elif arg.startswith('-g'):
+      has_debug = True
+    elif arg in ('-E', '-c', '-S', '-M', '-MM'):
+      do_link = False
+    elif (
+        arg in ('-B', '--sysroot', '--gcc-toolchain', '-target', '-m64',
+                '-sysld', '--sysld', '-p', '-pg', '-pie', '-fpic', '-fPIC',
+                '-fpie', '-fPIE', '-shared', '-shared-libgcc',
+                '-nostdinc++') or
+        # -target is Cland-specific.
+        arg.startswith('-B') or
+        arg.startswith('--sysroot=') or
+        arg.startswith('--gcc-toolchain=')):
+      sys.stderr.write('error: unsupported xtiny flag: %s\n' % arg)
+      sys.exit(1)
+    elif arg in ('-static-libgcc', '-nostdlib', '-nostdinc', '-s', '-static'):
+      continue
+    args_kept.append(arg)
+  cmd = [compiler, '-m32']
+  if is_compiling:
+    if opt is not None:
+      cmd.append(opt)
+    # Without this we get the following error compiling binutils 2.20.1:
+    # chew.c:(.text+0x233f): undefined reference to `__stack_chk_fail'
+    cmd.extend(('-fno-stack-protector',))
+    if not has_debug:
+      cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
+                  '-fomit-frame-pointer'))
+    if not has_nostdinc:
+      cmd.extend(('-nostdinc', '-isystem', '%s/include' % progdir))
+    if opt in (None, '-Os'):
+      cmd.extend(('-Os', '-fno-ident', '-mpreferred-stack-boundary=2',
+                  '-falign-functions=1', '-falign-jumps=1', '-falign-loops=1'))
+  if do_link:
+    # -s is not necessary here, it would be passed as `ld -s', but `ld -T'
+    # with the linker script overrides that.
+    #
+    # -static is passed to ld. Even without that linking .so files wouldn't
+    # work (could not read symbols: File in wrong format). But specifying
+    # -static improves the error message.
+    cmd.extend(('-static', '-nostdlib', '-Wl,-z,norelro',
+                '-Wl,--build-id=none'))
+  cmd.extend(args_kept)
+  if do_link:
+    # This must be between the .c .o files and the linker script (-T).
+    cmd.extend(('%s/lib__xtiny.a' % progdir,))
+    # `ld -T' must be specified after the actual .o and .a files.
+    #
+    # There is no search path for linker scripts, even a relative path would
+    # make ld look for only that name.
+    cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
+  if is_verbose:
+    sys.stderr.write('Running: %s\n' % ' '.join(map(pipes.quote, cmd)))
+  try:
+    os.execvp(cmd[0], cmd)
+  except OSError, e:
+    sys.stderr.write('exec of %s failed: %s\n' % (cmd[0], e))
+    sys.exit(2)
+
+
+if __name__ == '__main__':
+  sys.exit(main(sys.argv))
