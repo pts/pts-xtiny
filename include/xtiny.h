@@ -644,7 +644,7 @@ __syscall_return(type,__res); \
 }
 
 /* extern int errno; */
-extern char **environ;
+extern char **environ __asm__("__xtiny_environ");
 
 _syscall1(int,chdir,char const*,dir)
 _syscall1(int,chroot,char const*,dir)

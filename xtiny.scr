@@ -82,8 +82,10 @@ SECTIONS {
    * file. Probably because do real data bytes are added here.
    */
   .bss : ALIGN(4) SUBALIGN(4) {
-    __xtiny_errno = ABSOLUTE(.); . += 4;
-    environ = ABSOLUTE(.); . += 4;
+    /* errno is defined in __xtiny_errno.o in lib__xtiny.a. We could define it
+     * here: `__xtiny_errno = ABSOLUTE(.); . += 4;', but that would make the
+     * symbol unavailable when linking with gcc. Similarly for environ.
+     */
     *(.bss)
   }
   __p_memsz = .;

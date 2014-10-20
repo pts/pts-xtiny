@@ -109,6 +109,8 @@ Q11. What are the dependencies to run pts-xtiny?
 """"""""""""""""""""""""""""""""""""""""""""""""
 * a Linux i386 or amd64 system
 * gcc >=4.4 that can compile for the i386 target
+* the GNU linker: the ld tool GNU Binutils (other linkers such as gold
+  without linker script (`ld -T') support won't work)
 * Python >=2.4 (This may get removed in the future when the `xtiny' wrapper
   script gets rewritten in C.)
 
@@ -117,10 +119,50 @@ Q12. Does project X already compile?
 No, unless project X has a tiny codebase with very few dependencies. The
 culprit is that only a very small fraction of the libc is implemented.
 
-
 Q13. Does profiling work?
 """""""""""""""""""""""""
 No, `gcc -pg' etc. don't work, because the xtiny libc lacks the
 instrumentation for profile stack trace collection.
+
+Q14. Does debugging work?
+"""""""""""""""""""""""""
+Yes, if you specify the gcc -g flag for both compiling and linking. Of
+course, the generated binary will be much larger because of the extra debug
+info (and the linker script is not used either):
+
+Without debugging:
+
+  $ ./xtiny gcc examples/hellot.c
+  $ ./a.out
+  Hello, World!
+  $ ls -l a.out
+  -rwxr-xr-x 1 pts pts 200 Oct 20 03:15 a.out
+
+With debugging (-O0 is also recommended):
+
+  $ ./xtiny gcc -g examples/hellot.c
+  $ ./a.out
+  Hello, World!
+  $ ls -l a.out
+  -rwxr-xr-x 1 pts pts 3287 Oct 20 03:15 a.out
+
+If you compile for debugging (-g), and you strip the objects later, then
+they will become larger (252 bytes instead of 200 bytes in the example):
+
+  $ ./xtiny gcc -g -c examples/hellot.c
+  $ ./xtiny gcc hellot.o
+  $ ./a.out
+  Hello, World!
+  $ ls -l a.out
+  -rwxr-xr-x 1 pts pts 252 Oct 20 03:15 a.out
+
+Q15. Can I use the `strip' command to strip unneeded symbols?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+No, `strip' and most other ELF tools don't understand the non-debugging
+output of xtiny, because the section table is missing.
+
+Fortunately, `xtiny gcc' already generates a small enough output by default,
+containing only the necessary sections, so stripping wouldn't make it any
+smaller.
 
 __END__

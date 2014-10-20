@@ -93,10 +93,12 @@ def main(argv):
       cmd.append(opt)
     # Without this we get the following error compiling binutils 2.20.1:
     # chew.c:(.text+0x233f): undefined reference to `__stack_chk_fail'
-    cmd.extend(('-fno-stack-protector',))
+    #
+    # Please note that gdb doesn't need the frame pointer for debugging,
+    # because it has the unwind tables.
+    cmd.extend(('-fno-stack-protector', '-fomit-frame-pointer'))
     if not has_debug:
-      cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
-                  '-fomit-frame-pointer'))
+      cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',))
     if not has_nostdinc:
       cmd.extend(('-nostdinc', '-isystem', '%s/include' % progdir))
     if opt in (None, '-Os'):
@@ -115,11 +117,17 @@ def main(argv):
   if do_link:
     # This must be between the .c .o files and the linker script (-T).
     cmd.extend(('%s/lib__xtiny.a' % progdir,))
-    # `ld -T' must be specified after the actual .o and .a files.
-    #
-    # There is no search path for linker scripts, even a relative path would
-    # make ld look for only that name.
-    cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
+    if not has_debug:
+      # We don't specify a custom linker script if debugging (i.e. -g) is
+      # enabled, because gdb doesn't understand our custom stripped ELF. In
+      # this case the normal ELF linker output (with `ld -static') will be
+      # created, linking against the xtiny libc.
+      #
+      # There is no search path for linker scripts, even a relative path would
+      # make ld look for only that name.
+      #
+      # `ld -T' must be specified after the actual .o and .a files.
+      cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
   if is_verbose:
     sys.stderr.write('Running: %s\n' % ' '.join(map(pipes.quote, cmd)))
   try:
