@@ -18,6 +18,7 @@
 #            is still specified for ld, so ld -lieee works (but it shouldn't).
 #            We need to hook -ld for that. (--sysroot has no effect.)
 # TODO(pts): doc: What are the similar projects?
+# TODO(pts): doc: -fno-ident
 #
 # Sine xtiny.h is in an `-isystem' directory, to get warnings for it,
 # compile it with: `-Werror -Wsystem-headers', in addition to the usual `-W
