@@ -1,6 +1,10 @@
 #! /usr/bin/python
 # by pts@fazekas.hu at Sun Oct 19 13:46:41 CEST 2014
 #
+# TODO(pts): Will `ld -s' strip CFI (.eh_frame) and .comment sections?
+#            Can we explicitly configure the linker script to ignore those?
+#            Without that if .o in .a contains those, the executable will
+#            contain it unnecessarily.
 # TODO(pts): Add support for debugging with gdb. -g shouldn't remove symbols
 #            etc., maybe shouldn't use the linker script.
 # TODO(pts): Convert the xtiny tool from Python to .c.
