@@ -70,6 +70,7 @@ def main(argv):
   args_kept = []
   has_nostdinc = False
   is_compiling = False
+  is_preproc = False
   for arg in args:
     if not arg.startswith('-'):
       ext = os.path.splitext(os.path.basename(arg))[1]
@@ -85,7 +86,10 @@ def main(argv):
       continue
     elif arg.startswith('-g'):
       has_debug = True
-    elif arg in ('-E', '-c', '-S', '-M', '-MM'):
+    elif arg == '-E':
+      is_preproc = True
+      do_link = False
+    elif arg in ('-c', '-S', '-M', '-MM'):
       do_link = False
     elif (
         arg in ('-B', '--sysroot', '--gcc-toolchain', '-target', '-m64',
@@ -103,6 +107,9 @@ def main(argv):
       continue
     args_kept.append(arg)
   cmd = [compiler, '-m32']
+  if is_compiling or is_preproc:
+    # For detecting whether <xtiny.h> should be included.
+    cmd.append('-D__XTINY__')
   if is_compiling:
     if opt is not None:
       cmd.append(opt)
