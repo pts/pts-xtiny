@@ -1,10 +1,11 @@
 #! /usr/bin/python
 # by pts@fazekas.hu at Sun Oct 19 13:46:41 CEST 2014
 #
-# TODO(pts): Will `ld -s' strip CFI (.eh_frame) and .comment sections?
-#            Can we explicitly configure the linker script to ignore those?
-#            Without that if .o in .a contains those, the executable will
-#            contain it unnecessarily.
+# TODO(pts): Analyze default.scr, add ASSERT for some ctor-dtor sections,
+#            .jcr, discard .eh_frame etc.
+# TODO(pts): Enumerate sections:
+#            https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/specialsections.html
+# TODO(pts): How to use CONSTRUCTORS etc. in the linker script?
 # TODO(pts): Add support for debugging with gdb. -g shouldn't remove symbols
 #            etc., maybe shouldn't use the linker script.
 # TODO(pts): Convert the xtiny tool from Python to .c.
@@ -13,6 +14,7 @@
 #            pts-clang, and bad string constants for regular clang.
 # TODO(pts): Use glibc's smart __extern_always_inline instead?
 # TODO(pts): Add all __builtin_strlen etc.
+# TODO(pts): Does __builtin_memcpy get hardwired with gcc -O3?
 # TODO(pts): Add proper C++ `const char*' overloads for strstr etc, like
 #            glibc string.h
 # TODO(pts): With linker script can't find static libraries (*.a).
@@ -21,6 +23,7 @@
 # TODO(pts): Hide system library diretories, i.e. -L/usr/lib/i386-linux-gnu
 #            is still specified for ld, so ld -lieee works (but it shouldn't).
 #            We need to hook -ld for that. (--sysroot has no effect.)
+# TODO(pts): PROVIDE (edata = ABSOLUTE(.)); etc. from default.scr
 # TODO(pts): doc: What are the similar projects?
 # TODO(pts): doc: -fno-ident
 #
@@ -102,7 +105,7 @@ def main(argv):
     # Please note that gdb doesn't need the frame pointer for debugging,
     # because it has the unwind tables.
     cmd.extend(('-fno-stack-protector', '-fomit-frame-pointer'))
-    if not has_debug:
+    if not has_debug:  # CFI, .eh_frame .eh_frame_hdr
       cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',))
     if not has_nostdinc:
       cmd.extend(('-nostdinc', '-isystem', '%s/include' % progdir))
