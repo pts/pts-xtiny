@@ -12,6 +12,11 @@
 # TODO(pts): Add C++ support, possibly for many kinds of initializers.
 # TODO(pts): Make it work with clang: now segfault and large binary for
 #            pts-clang, and bad string constants for regular clang.
+#            clang-3.4.bin: error: unknown argument: '-mpreferred-stack-boundary=2'
+#            clang-3.4.bin: error: unknown argument: '-falign-jumps=1'
+#            clang-3.4.bin: error: unknown argument: '-falign-loops=1'
+#            Linking with the linker script doesn't work, gets linked regularly, and the result is a segfault.
+#            __builtin_strlen acts really strangely.
 # TODO(pts): Use glibc's smart __extern_always_inline instead?
 # TODO(pts): Add all __builtin_strlen etc.
 # TODO(pts): Does __builtin_memcpy get hardwired with gcc -O3?
@@ -23,7 +28,9 @@
 # TODO(pts): Hide system library diretories, i.e. -L/usr/lib/i386-linux-gnu
 #            is still specified for ld, so ld -lieee works (but it shouldn't).
 #            We need to hook -ld for that. (--sysroot has no effect.)
-# TODO(pts): PROVIDE (edata = ABSOLUTE(.)); etc. from default.scr
+# TODO(pts): Import syscalls from libsys (syscall-only libc, 1999). There is
+#            socketcall, but no individual calls. What about constness etc.
+#            Maybe uclibc?
 # TODO(pts): doc: What are the similar projects?
 # TODO(pts): doc: -fno-ident
 #

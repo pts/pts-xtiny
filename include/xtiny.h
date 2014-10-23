@@ -669,24 +669,21 @@ static __inline__ int setgroups(int __s, const gid_t *__l) {
   return sys_setgroups32(__s, __l);
 }
 
-static __inline__ const char *strstr(
-    const char *__haystack, const char *__needle) {
-  return __builtin_strstr(__haystack, __needle);
-}
-
-static __inline__ __attribute__((pure, nonnull(1))) size_t strlen(const char *__s) {
-  return __builtin_strlen(__s);
-}
-
-static __inline__ __attribute__((pure, nonnull(1))) void *memchr(const void *__s, int __c, size_t __n) {
-  return __builtin_memchr(__s, __c, __n);
-}
-
-#if 0  /* TODO(pts): Copy signatures from string.h and implement. */
-memcmp, memcpy, memset
-strcat, strchr, strcmp, strcpy, strcspn,
-strncat, strncmp, strncpy, strpbrk, strrchr, strspn
-#endif
+/* string.h contains many more functions (see string/string_decl.h), but this is what we have implemented. */
+extern void *memccpy(void *__restrict __dest, __const void *__restrict __src, int __c, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
+extern void *memchr(__const void *__s, int __c, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1)));
+extern int memcmp(__const void *__s1, __const void *__s2, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+extern void *memcpy(void *__restrict __dest, __const void *__restrict __src, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
+extern void *memset(void *__s, int __c, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1)));
+extern int strcasecmp(__const char *__s1, __const char *__s2) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+extern char *strcat(char *__restrict __dest, __const char *__restrict __src) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
+extern char *strchr(__const char *__s, int __c) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1)));
+extern int strcmp(__const char *__s1, __const char *__s2) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+extern char *strcpy(char *__restrict __dest, __const char *__restrict __src) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
+extern size_t strlen(__const char *__s) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1)));
+extern int strncmp(__const char *__s1, __const char *__s2, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+extern char *strncpy(char *__restrict __dest, __const char *__restrict __src, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
+extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1)));
 
 static __inline__ int puts(const char *s) {
   int i, remaining = strlen(s);
