@@ -29,8 +29,8 @@ _start:
 .byte 0xC1, 0xEB, 0x02
 /* ^^^ 00000014  C1EB02            shr ebx,0x2 */
 .byte 0x89, 0x0D
-.long environ
-/* ^^^ 00000017  890D????????      mov [environ],ecx */
+.long __xtiny_environ
+/* ^^^ 00000017  890D????????      mov [__xtiny_environ],ecx */
 .byte 0x51
 /* ^^^ 0000001D  51                push ecx */
 .byte 0x52
