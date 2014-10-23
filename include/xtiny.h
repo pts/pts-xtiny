@@ -188,7 +188,7 @@ typedef long int fd_mask;
 typedef unsigned long int pthread_t;
 typedef unsigned int pthread_key_t;
 typedef int pthread_once_t;
-typedef volatile int pthread_spinlock_t;
+typedef __volatile__ int pthread_spinlock_t;
 typedef unsigned short umode_t;
 
 /* Constants from asm/unistd_32.h */
@@ -569,7 +569,7 @@ do { \
 #define _syscall0(type,name) \
 static __inline__ type name(void) { \
 long __res; \
-__asm__ volatile ("int $0x80" \
+__asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
   : "0" (__NR_##name)); \
 __syscall_return(type,__res); \
@@ -578,7 +578,7 @@ __syscall_return(type,__res); \
 #define _syscall1(type,name,type1,arg1) \
 static __inline__ type name(type1 __##arg1) { \
 long __res; \
-__asm__ volatile ("int $0x80" \
+__asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
   : "0" (__NR_##name),"b" ((long)(__##arg1))); \
 __syscall_return(type,__res); \
@@ -587,7 +587,7 @@ __syscall_return(type,__res); \
 #define _syscall1_noreturn(name,type1,arg1) \
 static __inline__ void __attribute__((noreturn)) name(type1 __##arg1) { \
 long __res; \
-__asm__ volatile ("int $0x80" \
+__asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
   : "0" (__NR_##name),"b" ((long)(__##arg1))); \
 __builtin_unreachable(); \
@@ -596,7 +596,7 @@ __builtin_unreachable(); \
 #define _syscall2(type,name,type1,arg1,type2,arg2) \
 static __inline__ type name(type1 __##arg1,type2 __##arg2) { \
 long __res; \
-__asm__ volatile ("int $0x80" \
+__asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
   : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2))); \
 __syscall_return(type,__res); \
@@ -605,7 +605,7 @@ __syscall_return(type,__res); \
 #define _syscall3(type,name,type1,arg1,type2,arg2,type3,arg3) \
 static __inline__ type name(type1 __##arg1,type2 __##arg2,type3 __##arg3) { \
 long __res; \
-__asm__ volatile ("int $0x80" \
+__asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
   : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), \
       "d" ((long)(__##arg3))); \
@@ -615,7 +615,7 @@ __syscall_return(type,__res); \
 #define _syscall4(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4) \
 static __inline__ type name (type1 __##arg1, type2 __##arg2, type3 __##arg3, type4 __##arg4) { \
 long __res; \
-__asm__ volatile ("int $0x80" \
+__asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
   : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), \
     "d" ((long)(__##arg3)),"S" ((long)(__##arg4))); \
@@ -625,7 +625,7 @@ __syscall_return(type,__res); \
 #define _syscall5(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5) \
 static __inline__ type name (type1 __##arg1,type2 __##arg2,type3 __##arg3,type4 __##arg4,type5 __##arg5) { \
 long __res; \
-__asm__ volatile ("int $0x80" \
+__asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
   : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), \
     "d" ((long)(__##arg3)),"S" ((long)(__##arg4)),"D" ((long)(__##arg5))); \
@@ -635,7 +635,7 @@ __syscall_return(type,__res); \
 #define _syscall6(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5,type6,arg6) \
 static __inline__ type name (type1 __##arg1,type2 __##arg2,type3 __##arg3,type4 __##arg4,type5 __##arg5,type6 __##arg6) { \
 long __res; \
-__asm__ volatile ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80 ; pop %%ebp" \
+__asm__ __volatile__ ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80 ; pop %%ebp" \
   : "=a" (__res) \
   : "i" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), \
     "d" ((long)(__##arg3)),"S" ((long)(__##arg4)),"D" ((long)(__##arg5)), \
