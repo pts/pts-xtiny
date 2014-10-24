@@ -1,12 +1,12 @@
 #! /usr/bin/python
 # by pts@fazekas.hu at Sun Oct 19 13:46:41 CEST 2014
 #
+# TODO(pts): clang-3.0 doesn't support -fno-ident and -falign-functions=1.
+#            Disable these flags for early clang.
 # TODO(pts): Add -lgcc for long long division etc.
-# TODO(pts): Let gcc find own its include files (but not /usr/include).
-# TODO(pts): Let gcc find the custom ld (also works for clang):
-#            gcc -v -B /tmp/foo/bar pts-xtiny/examples/hellot.c
-# TODO(pts): Analyze default.scr, add ASSERT for some ctor-dtor sections,
-#            .jcr, discard .eh_frame etc.
+# TODO(pts): Add lib directory for possible additional user libraries.
+# TODO(pts): Auto-detect GNU gold and use the built-in linker if available.
+#            Please note /usr/bin/ld vs /usr/bin/gold.
 # TODO(pts): Enumerate sections:
 #            https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/specialsections.html
 # TODO(pts): How to use CONSTRUCTORS etc. in the linker script?
@@ -23,16 +23,11 @@
 #            __builtin_strlen acts really strangely.
 # TODO(pts): pts-clang bug: no include paths in -E -.
 # TODO(pts): Use glibc's smart __extern_always_inline instead?
-# TODO(pts): Add all __builtin_strlen etc.
 # TODO(pts): Does __builtin_memcpy get hardwired with gcc -O3?
 # TODO(pts): Add proper C++ `const char*' overloads for strstr etc, like
 #            glibc string.h
-# TODO(pts): With linker script can't find static libraries (*.a).
 # TODO(pts): Why is gcc-4.4 tinyt.c two.c only 424 bytes, but with gcc-4.6 it's
 #            436 bytes?
-# TODO(pts): Hide system library diretories, i.e. -L/usr/lib/i386-linux-gnu
-#            is still specified for ld, so ld -lieee works (but it shouldn't).
-#            We need to hook -ld for that. (--sysroot has no effect.)
 # TODO(pts): Import syscalls from libsys (syscall-only libc, 1999). There is
 #            socketcall, but no individual calls. What about constness etc.
 #            Maybe uclibc?
@@ -57,7 +52,7 @@ STDARG_DIR_RE = re.compile(r'"(/[^\n"]*)/stdarg[.]h"')
 
 
 def find_compiler_include_dir(compiler, progdir):
-  e_cmd = (compiler, '-E', '%s/stdarginc.c' % progdir)
+  e_cmd = (compiler, '-m32', '-E', '%s/stdarginc.c' % progdir)
   try:
     p = subprocess.Popen(e_cmd, stdout=subprocess.PIPE)
   except (IOError, OSError), e:
@@ -87,6 +82,67 @@ def find_compiler_include_dir(compiler, progdir):
   return compiler_include_dir
 
 
+def get_bdir_prog_path(compiler, bdir, prog):
+  cmd = [compiler, '-m32']
+  if bdir is not None:
+    cmd.extend(('-B', bdir))
+  cmd.extend(('-print-prog-name=%s' % prog,))
+  try:
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+  except (IOError, OSError), e:
+    sys.stderr.write('fatal: Running %s failed: %s\n' % (compiler, e))
+    sys.exit(4)
+  try:
+    data = p.stdout.read()
+  finally:
+    exit_code = p.wait()
+  if exit_code:
+    sys.stderr.write(
+        'fatal: Running %s failed with code %d\n' % (compiler, exit_code))
+    sys.exit(4)
+  if len(data) < 2 or data.find('\n') != len(data) - 1:
+    sys.stderr.write('fatal: prog %s name not found\n' % prog)
+    sys.exit(4)
+  return data[:-1]
+
+
+def wrap_linker(argv, prgdir):
+  """When xtiny is called as a linker as bdir/ld --xtiny-link."""
+  cmd = [None]
+  argi = 1
+  linkdirs = []
+  while argi < len(argv):
+    arg = argv[argi]
+    argi += 1
+    if arg == '--xtiny-link':
+      if argi == len(argv):
+        sys.stderr.write('fatal: missing arg for --xtiny-link')
+        sys.exit(1)
+      is_found = True
+      cmd[0] = argv[argi]
+      cmd.extend(argv[argi + 1:])
+      assert '-L---' not in cmd
+      break
+    elif arg.startswith('-l'):
+      sys.stderr.write('fatal: library too early: %s\n' % arg)
+      sys.exit(1)
+    elif arg == '-L---':
+      # Append -L... directories explicitly specified in the compiler cmdline.
+      cmd[1 : 1] = linkdirs
+      linkdirs = []
+    elif arg.startswith('-L'):
+      linkdirs.append(arg) 
+    else:
+      cmd.append(arg)
+  assert cmd[0] is not None, 'missing --xtiny-link flag'
+  # TODO(pts): Display the command if -v was given.
+  try:
+    os.execvp(cmd[0], cmd)
+  except OSError, e:
+    sys.stderr.write('fatal: Exec of linker %s failed: %s\n' % (cmd[0], e))
+    sys.exit(2)
+
+
 def main(argv):
   if len(argv) < 2 or argv[1] == '--help':
     sys.stderr.write(
@@ -101,10 +157,11 @@ def main(argv):
   except OSError, e:
     pass
   progdir = os.path.dirname(prog)
+  if '--xtiny-link' in argv[1:]:
+    return wrap_linker(argv, progdir)
   compiler = argv[1]
   compiler_basename = os.path.basename(compiler)
   is_clang = 'clang' in compiler_basename
-  args = argv[2:]
   is_verbose = False
   opt = None
   has_debug = False
@@ -113,7 +170,13 @@ def main(argv):
   has_nostdinc = False
   is_compiling = False
   is_preproc = False
-  for arg in args:
+  bdir = None
+  do_xtiny_link = True
+
+  argi = 2  # Skip xtiny (argv[0]) and the compiler.
+  while argi < len(argv):
+    arg = argv[argi]
+    argi += 1
     if not arg.startswith('-'):
       ext = os.path.splitext(os.path.basename(arg))[1]
       if ext in ('.cc', '.cp', '.cxx', '.cpp', '.c++', '.C',  # C++.
@@ -133,19 +196,30 @@ def main(argv):
       do_link = False
     elif arg in ('-c', '-S', '-M', '-MM'):
       do_link = False
+    elif arg.startswith('-B'):
+      if arg == '-B':
+        if argi < len(argv):
+          bdir = argv[argi]
+      else:
+        bdir = arg[2:]
     elif (
         arg in ('--sysroot', '--gcc-toolchain', '-target', '-m64',
                 '-sysld', '--sysld', '-p', '-pg', '-pie', '-fpic', '-fPIC',
                 '-fpie', '-fPIE', '-shared', '-shared-libgcc',
                 '-nostdinc++', '-m64') or
         # -target is Cland-specific.
-        #arg.startswith('-B') or
         arg.startswith('--sysroot=') or
         arg.startswith('--gcc-toolchain=')):
-      sys.stderr.write('error: unsupported xtiny flag: %s\n' % arg)
+      sys.stderr.write('fatal: unsupported xtiny flag: %s\n' % arg)
       sys.exit(1)
     elif arg == '-nostdinc':
       has_nostdinc = True
+      continue
+    elif arg == '-mxtiny-link':
+      do_xtiny_link = True
+      continue
+    elif arg == '-mno-xtiny-link':
+      do_xtiny_link = False
       continue
     elif arg in ('-static-libgcc', '-nostdlib', '-s', '-static',
                  '-m32'):
@@ -187,17 +261,41 @@ def main(argv):
         # would remove gcc-include as well.
         cmd.extend(('-isysroot', '%s/noisysroot' % progdir))
     if opt in (None, '-Os'):
-      cmd.extend(('-Os', '-fno-ident', '-mpreferred-stack-boundary=2',
-                  '-falign-functions=1', '-falign-jumps=1', '-falign-loops=1'))
+      cmd.extend(('-Os', '-fno-ident', '-falign-functions=1'))
+      if not is_clang:  # Clang 3.4 doesn't have these.
+        cmd.extend(('-mpreferred-stack-boundary=2',
+                    '-falign-jumps=1', '-falign-loops=1'))
   if do_link:
     # -s is not necessary here, it would be passed as `ld -s', but `ld -T'
-    # with the linker script overrides that.
-    #
+    # with the linker script overrides that. We specigy -s anyway so that it
+    # will work with linkers ignoring the -T flag (e.g. GNU gold).
+    if not has_debug:
+      cmd.extend(('-s',))
     # -static is passed to ld. Even without that linking .so files wouldn't
     # work (could not read symbols: File in wrong format). But specifying
     # -static improves the error message.
     cmd.extend(('-static', '-nostdlib', '-Wl,-z,norelro',
                 '-Wl,--build-id=none'))
+    # With do_xtiny_link gcc would still work, but the linker
+    # command-line would contain too many `-L' directories, so `-lm' would try
+    # to link against the system libm.a.
+    if do_xtiny_link:
+      ld_prog_path = get_bdir_prog_path(compiler, bdir, 'ld')
+      if is_clang and ld_prog_path.endswith('/clangld32/ld'):
+        # pts-clang. Append .bin to the compiler name, because the wrapper
+        # binary rejects the -B flag.
+        #
+        # Please note that there is no problem for non-linking (e.g. -E, -c)
+        # with the pts-clang wrapper, so we don't modify it.
+        cmd[0] += '.bin'
+        if not has_debug:
+          # pts-clang uses the GNU gold linker, which ignores -T for the linker
+          # script. Let's use the system ld instead.
+          # TODO(pts): Use the built-in ld if available.
+          ld_prog_path = 'ld'
+      assert ',' not in ld_prog_path, ld_prog_path
+      cmd.extend(('-B', '%s/bdir' % progdir, '-Wl,--xtiny-link',
+                  '-Wl,' + ld_prog_path))
   cmd.extend(args_kept)
   if do_link:
     # This must be between the .c .o files and the linker script (-T).
@@ -213,12 +311,14 @@ def main(argv):
       #
       # `ld -T' must be specified after the actual .o and .a files.
       cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
+    if do_xtiny_link:
+      cmd.extend(('-L---',))
   if is_verbose:
     sys.stderr.write('Running: %s\n' % ' '.join(map(pipes.quote, cmd)))
   try:
     os.execvp(cmd[0], cmd)
   except OSError, e:
-    sys.stderr.write('fatal: Exec of %s failed: %s\n' % (cmd[0], e))
+    sys.stderr.write('fatal: Exec of compiler %s failed: %s\n' % (cmd[0], e))
     sys.exit(2)
 
 
