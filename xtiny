@@ -1,6 +1,10 @@
 #! /usr/bin/python
 # by pts@fazekas.hu at Sun Oct 19 13:46:41 CEST 2014
 #
+# TODO(pts): Add -lgcc for long long division etc.
+# TODO(pts): Let gcc find own its include files (but not /usr/include).
+# TODO(pts): Let gcc find the custom ld (also works for clang):
+#            gcc -v -B /tmp/foo/bar pts-xtiny/examples/hellot.c
 # TODO(pts): Analyze default.scr, add ASSERT for some ctor-dtor sections,
 #            .jcr, discard .eh_frame etc.
 # TODO(pts): Enumerate sections:
@@ -17,6 +21,7 @@
 #            clang-3.4.bin: error: unknown argument: '-falign-loops=1'
 #            Linking with the linker script doesn't work, gets linked regularly, and the result is a segfault.
 #            __builtin_strlen acts really strangely.
+# TODO(pts): pts-clang bug: no include paths in -E -.
 # TODO(pts): Use glibc's smart __extern_always_inline instead?
 # TODO(pts): Add all __builtin_strlen etc.
 # TODO(pts): Does __builtin_memcpy get hardwired with gcc -O3?
@@ -42,9 +47,44 @@
 import os
 import os.path
 import pipes
+import re
 import stat
 import subprocess
 import sys
+
+
+STDARG_DIR_RE = re.compile(r'"(/[^\n"]*)/stdarg[.]h"')
+
+
+def find_compiler_include_dir(compiler, progdir):
+  e_cmd = (compiler, '-E', '%s/stdarginc.c' % progdir)
+  try:
+    p = subprocess.Popen(e_cmd, stdout=subprocess.PIPE)
+  except (IOError, OSError), e:
+    sys.stderr.write('fatal: Running %s failed: %s\n' % (compiler, e))
+    sys.exit(3)
+  try:
+    data = p.stdout.read()
+  finally:
+    exit_code = p.wait()
+  if exit_code:
+    sys.stderr.write(
+        'fatal: Running %s failed with code %d\n' % (compiler, exit_code))
+    sys.exit(3)
+  dirs = set(STDARG_DIR_RE.findall(data))
+  if not dirs:
+    sys.stderr.write('fatal: compiler include dir not found\n')
+    sys.exit(3)
+  if len(dirs) > 1:
+    sys.stderr.write('fatal: multiple compiler include dirs found: %r\n' %
+                      dirs)
+    sys.exit(3)
+  compiler_include_dir = iter(dirs).next()
+  if not os.path.isdir(compiler_include_dir):
+    sys.stderr.write('fatal: compiler include dir does not exist: %s\n' %
+                      compiler_include_dir)
+    sys.exit(3)
+  return compiler_include_dir
 
 
 def main(argv):
@@ -62,6 +102,8 @@ def main(argv):
     pass
   progdir = os.path.dirname(prog)
   compiler = argv[1]
+  compiler_basename = os.path.basename(compiler)
+  is_clang = 'clang' in compiler_basename
   args = argv[2:]
   is_verbose = False
   opt = None
@@ -92,17 +134,20 @@ def main(argv):
     elif arg in ('-c', '-S', '-M', '-MM'):
       do_link = False
     elif (
-        arg in ('-B', '--sysroot', '--gcc-toolchain', '-target', '-m64',
+        arg in ('--sysroot', '--gcc-toolchain', '-target', '-m64',
                 '-sysld', '--sysld', '-p', '-pg', '-pie', '-fpic', '-fPIC',
                 '-fpie', '-fPIE', '-shared', '-shared-libgcc',
                 '-nostdinc++', '-m64') or
         # -target is Cland-specific.
-        arg.startswith('-B') or
+        #arg.startswith('-B') or
         arg.startswith('--sysroot=') or
         arg.startswith('--gcc-toolchain=')):
       sys.stderr.write('error: unsupported xtiny flag: %s\n' % arg)
       sys.exit(1)
-    elif arg in ('-static-libgcc', '-nostdlib', '-nostdinc', '-s', '-static',
+    elif arg == '-nostdinc':
+      has_nostdinc = True
+      continue
+    elif arg in ('-static-libgcc', '-nostdlib', '-s', '-static',
                  '-m32'):
       continue
     args_kept.append(arg)
@@ -121,8 +166,26 @@ def main(argv):
     cmd.extend(('-fno-stack-protector', '-fomit-frame-pointer'))
     if not has_debug:  # CFI, .eh_frame .eh_frame_hdr
       cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',))
-    if not has_nostdinc:
-      cmd.extend(('-nostdinc', '-isystem', '%s/include' % progdir))
+    if has_nostdinc:
+      # This wipes out the include list for gcc, clang and pts-clang.
+      # Ubuntu Lucid clang-3.0 doesn't respect `-nostdinc'.
+      cmd.extend(('-nostdinc', '-isysroot', '/dev/null/noisysroot'))
+    else:
+      # clang default order: -I, /usr/include, clang-include, gcc-include
+      # pts-clang default order: -I, /usr-include, clang-include
+      # gcc default order: -I, gcc-include, /usr/include
+      # our default order: -I, xtiny-include, (gcc|clang)-include
+
+      # Puts it in front of -isysroot.
+      cmd.extend(('-isystem', '%s/include' % progdir))
+      if is_clang:
+        compiler_include_dir = find_compiler_include_dir(compiler, progdir)
+        cmd.extend(('-nostdinc', '-isysroot', '/dev/null/noisysroot',
+                    '-isystem', compiler_include_dir))
+      else:  # GCC.
+        # Remove /usr/include, but keep gcc-include. Don't use -nostdinc, that
+        # would remove gcc-include as well.
+        cmd.extend(('-isysroot', '%s/noisysroot' % progdir))
     if opt in (None, '-Os'):
       cmd.extend(('-Os', '-fno-ident', '-mpreferred-stack-boundary=2',
                   '-falign-functions=1', '-falign-jumps=1', '-falign-loops=1'))
@@ -155,7 +218,7 @@ def main(argv):
   try:
     os.execvp(cmd[0], cmd)
   except OSError, e:
-    sys.stderr.write('exec of %s failed: %s\n' % (cmd[0], e))
+    sys.stderr.write('fatal: Exec of %s failed: %s\n' % (cmd[0], e))
     sys.exit(2)
 
 
