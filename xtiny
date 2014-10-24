@@ -2,7 +2,12 @@
 # by pts@fazekas.hu at Sun Oct 19 13:46:41 CEST 2014
 #
 # TODO(pts): clang-3.0 doesn't support -fno-ident and -falign-functions=1.
-#            Disable these flags for early clang.
+#            It's only a warning emitted by clang-3.0 ... clang-3.3:
+#            clang-3.3.bin: warning: argument unused during compilation: '-fno-ident'
+#            clang-3.3.bin: warning: argument unused during compilation: '-falign-functions=1'
+#            Disable these flags for early clang (?).
+#            -Qunused-arguments disables it, but it also disables the warning
+#            for -lbar. I think we want that.
 # TODO(pts): Add -lgcc for long long division etc.
 # TODO(pts): Add lib directory for possible additional user libraries.
 # TODO(pts): Auto-detect GNU gold and use the built-in linker if available.
@@ -244,6 +249,7 @@ def main(argv):
       # This wipes out the include list for gcc, clang and pts-clang.
       # Ubuntu Lucid clang-3.0 doesn't respect `-nostdinc'.
       cmd.extend(('-nostdinc', '-isysroot', '/dev/null/noisysroot'))
+      # TODO(pts): Try -nostdsysteminc -nobuiltininc for clang.
     else:
       # clang default order: -I, /usr/include, clang-include, gcc-include
       # pts-clang default order: -I, /usr-include, clang-include
