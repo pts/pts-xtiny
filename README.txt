@@ -37,14 +37,11 @@ the output file even smaller.
 
 Q2. Which compilers are supported?
 """"""""""""""""""""""""""""""""""
-gcc-4.4 and later. Probably it would be possible to make it work with
-gcc-4.3, gcc-4.2 and gcc-4.1 if there is interest.
+gcc-4.4 and later, and clang-3.0 and later. Probably it would be possible to
+make it work with gcc-4.3, gcc-4.2 and gcc-4.1 if there is interest.
 
 You have to install the compiler separately. You can install it from package
 (e.g. `sudo apt-get install gcc' on Debian-ish systems).
-
-clang doesn't work yet, there are some strange bugs, for example string
-constants (char[]) are not propagated properly.
 
 Q3. Which architectures are supported?
 """"""""""""""""""""""""""""""""""""""
@@ -62,7 +59,7 @@ Q5. Do the executables link against glibc, eglibc, uClibc, dietlibc?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 No, they link statically against the xtiny libc only, which is included in
 the pts-xtiny distribution. At runtime no external files are necessary to
-run them.
+run the executables.
 
 Q6. The xtiny libc is very small, will you add function X?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -161,8 +158,61 @@ Q15. Can I use the `strip' command to strip unneeded symbols?
 No, `strip' and most other ELF tools don't understand the non-debugging
 output of xtiny, because the section table is missing.
 
+You can use `sstrip' though, but it's unnecessary.
+
 Fortunately, `xtiny gcc' already generates a small enough output by default,
 containing only the necessary sections, so stripping wouldn't make it any
 smaller.
+
+Q16. Can I write multithreaded programs?
+""""""""""""""""""""""""""""""""""""""""
+Not easily and not out-of-the-box. First you have to fix errno, which is now
+a global variable, and you should make it thread-local instead. Then you
+have to write a threading library (possibly based on clone(2)).
+
+Q17. Can I use third-party libraries?
+"""""""""""""""""""""""""""""""""""""
+pts-xtiny doesn't support dynamic libraries (.so files). It supports static
+libraries (.a files). You can use such libraries the usual way: you have to
+specify the -L... flag with the directory which contains the .a files, and
+then -lfoo for libfoo.a in that directory.
+
+Please note that there aren't any third-party libraries available yet the
+author of pts-xtiny knows of.
+
+Q18. Is pts-xtiny better than TCC (Tiny C Compiler)?
+""""""""""""""""""""""""""""""""""""""""""""""""""""
+It's hard to compare, because they have different goals. TCC
+(http://bellard.org/tcc/) is a tiny compiler (in terms of file size) which
+generates unoptimized, thus a bit bloated executables. pts-xtiny uses a
+regular, optimizing compiler (GCC or Clang) and contains library functions
+optimized for size, so it generates tiny executables.
+
+If you are interested in a self-contained version of TCC (statically linked,
+also containing the .a files), get pts-tcc from
+http://ptspts.blogspot.com/2009/11/tiny-self-contained-c-compiler-using.html
+.
+
+Q19. I need a libc with many more features. How do I benefit from pts-xtiny?
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+You can use the linker script xtiny.scr from pts-xtiny. Just append
+`-Wl,-T,.../xtiny.scr' to your `gcc' command-line using another libc (such
+as dietlibc or uClibc), and benefit from some extra stripping of unneeded
+symbols.
+
+If your code contains constructors or destructors (i.e. code which runs
+before main or after exit(2)), xtiny.scr may not work for you though, and
+you'll get a linker error.
+
+Q20. Are executables created with pts-xtiny very fast?
+""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Not particularly, because they are optimized for size (`gcc -Os') instead of
+speed, and functions in the xtiny libc are also optimized for size (e.g.
+memset is just a `rep stosb', quite slow compared to SIMD approaches (e.g.
+MMX, SSE) on some CPUs).
+
+If you need fast execution, you should give up on tiny executable sizes, and
+you should try uClibc (or even EGLIBC or glibc) instead. With dietlibc, many
+library functions are not optimized for speed.
 
 __END__
