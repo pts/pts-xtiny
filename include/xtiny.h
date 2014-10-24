@@ -669,21 +669,27 @@ static __inline__ int setgroups(int __s, const gid_t *__l) {
   return sys_setgroups32(__s, __l);
 }
 
+#ifdef __clang__
+#define __attribute__leaf  /* Not defined in clang-3.4. */
+#else
+#define __attribute__leaf __attribute__((__leaf__))
+#endif
+
 /* string.h contains many more functions (see string/string_decl.h), but this is what we have implemented. */
-extern void *memccpy(void *__restrict __dest, __const void *__restrict __src, int __c, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
-extern void *memchr(__const void *__s, int __c, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1)));
-extern int memcmp(__const void *__s1, __const void *__s2, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
-extern void *memcpy(void *__restrict __dest, __const void *__restrict __src, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
-extern void *memset(void *__s, int __c, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1)));
-extern int strcasecmp(__const char *__s1, __const char *__s2) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
-extern char *strcat(char *__restrict __dest, __const char *__restrict __src) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
-extern char *strchr(__const char *__s, int __c) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1)));
-extern int strcmp(__const char *__s1, __const char *__s2) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
-extern char *strcpy(char *__restrict __dest, __const char *__restrict __src) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
-extern size_t strlen(__const char *__s) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1)));
-extern int strncmp(__const char *__s1, __const char *__s2, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
-extern char *strncpy(char *__restrict __dest, __const char *__restrict __src, size_t __n) __attribute__((__nothrow__, __leaf__)) __attribute__((__nonnull__(1, 2)));
-extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__, __leaf__)) __attribute__((__pure__)) __attribute__((__nonnull__(1)));
+extern void *memccpy(void *__restrict __dest, __const void *__restrict __src, int __c, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
+extern void *memchr(__const void *__s, int __c, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
+extern int memcmp(__const void *__s1, __const void *__s2, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+extern void *memcpy(void *__restrict __dest, __const void *__restrict __src, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
+extern void *memset(void *__s, int __c, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1)));
+extern int strcasecmp(__const char *__s1, __const char *__s2) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+extern char *strcat(char *__restrict __dest, __const char *__restrict __src) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
+extern char *strchr(__const char *__s, int __c) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
+extern int strcmp(__const char *__s1, __const char *__s2) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+extern char *strcpy(char *__restrict __dest, __const char *__restrict __src) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
+extern size_t strlen(__const char *__s) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
+extern int strncmp(__const char *__s1, __const char *__s2, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
+extern char *strncpy(char *__restrict __dest, __const char *__restrict __src, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
+extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
 
 static __inline__ int puts(const char *s) {
   int i, remaining = strlen(s);
