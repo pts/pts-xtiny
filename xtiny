@@ -1,13 +1,6 @@
 #! /usr/bin/python
 # by pts@fazekas.hu at Sun Oct 19 13:46:41 CEST 2014
 #
-# TODO(pts): clang-3.0 doesn't support -fno-ident and -falign-functions=1.
-#            It's only a warning emitted by clang-3.0 ... clang-3.3:
-#            clang-3.3.bin: warning: argument unused during compilation: '-fno-ident'
-#            clang-3.3.bin: warning: argument unused during compilation: '-falign-functions=1'
-#            Disable these flags for early clang (?).
-#            -Qunused-arguments disables it, but it also disables the warning
-#            for -lbar. I think we want that.
 # TODO(pts): Add -lgcc for long long division etc.
 # TODO(pts): Add lib directory for possible additional user libraries.
 # TODO(pts): Auto-detect GNU gold and use the built-in linker if available.
@@ -235,6 +228,10 @@ def main(argv):
     # For detecting whether <xtiny.h> should be included.
     cmd.append('-D__XTINY__')
   if is_compiling:
+    if is_clang:
+      # To avoid this (which only appears with `clang -c' and `clang -S':
+      # argument clang-3.3.bin: warning: argument unused during compilation: '-fno-ident'
+      cmd.append('-Qunused-arguments')
     if opt is not None:
       cmd.append(opt)
     # Without this we get the following error compiling binutils 2.20.1:
