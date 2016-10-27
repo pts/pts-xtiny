@@ -97,9 +97,9 @@ specified by the `xtiny' wrapper script. Unless you speciy another
 the output file even smaller.
 
 It's recommended that you specify some warning flags, like these: -W -Wall
--Wextra -Werror Wsystem-headers.
+-Wextra -Werror -Wsystem-headers.
 
-You may also want to specify -ansi or `-ansi -pedantic', but that usually
+You may also want to specify -ansi or -ansi -pedantic, but that usually
 gives you only very little benefit in addition to the warning flags.
 
 Q11. What are the dependencies to run pts-xtiny?
