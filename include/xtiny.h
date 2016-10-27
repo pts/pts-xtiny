@@ -646,8 +646,10 @@ __syscall_return(type,__res); \
 /* extern int errno; */
 extern char **environ __asm__("__xtiny_environ");
 
-_syscall1(int,chdir,char const*,dir)
-_syscall1(int,chroot,char const*,dir)
+_syscall1(int,close,int,fd)
+_syscall3(int,open,const char *,pathname,int,flags,mode_t,mode)
+_syscall1(int,chdir,const char*,dir)
+_syscall1(int,chroot,const char*,dir)
 _syscall1_noreturn(sys_exit,int,exitcode)
 _syscall3(int,execve,const char*,file,char**,argv,char**,envp)
 _syscall0(uid_t,geteuid)
@@ -672,11 +674,70 @@ static __inline__ int setgroups(int __s, const gid_t *__l) {
 #ifdef __clang__
 #define __attribute__leaf  /* Not defined in clang-3.4. */
 #else
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
 #define __attribute__leaf __attribute__((__leaf__))
+#else
+#define __attribute__leaf  /* Not defined before gcc-4.6. */
+#endif
 #endif
 
+#define __XTINY_STATIC_ASSERT(name, expr_true) struct __StaticAssert##name { \
+    int StaticAssert##name : (expr_true); }
+
+typedef char int8_t;
+__XTINY_STATIC_ASSERT(SizeofInt8T, sizeof(int8_t) == 1);
+typedef short int16_t;
+__XTINY_STATIC_ASSERT(SizeofInt16T, sizeof(int16_t) == 2);
+typedef int int32_t;
+__XTINY_STATIC_ASSERT(SizeofInt32T, sizeof(int32_t) == 4);
+__extension__ typedef long long int64_t;  /* No need for __extension__, why? */
+__XTINY_STATIC_ASSERT(SizeofInt64T, sizeof(int64_t) == 8);
+
+typedef unsigned char uint8_t;
+__XTINY_STATIC_ASSERT(SizeofUint8T, sizeof(uint8_t) == 1);
+typedef unsigned short uint16_t;
+__XTINY_STATIC_ASSERT(SizeofUint16T, sizeof(uint16_t) == 2);
+typedef unsigned int uint32_t;
+__XTINY_STATIC_ASSERT(SizeofUint32T, sizeof(uint32_t) == 4);
+__extension__ typedef unsigned long long uint64_t;  /* No need for __extension__, why? */
+__XTINY_STATIC_ASSERT(SizeofUint64T, sizeof(uint64_t) == 8);
+
+#ifdef __GNUG__
+#define NULL __null
+#else   /* G++ */  
+#ifndef __cplusplus
+#define NULL ((void *)0)
+#else   /* C++ */
+#define NULL 0   
+#endif  /* C++ */
+#endif  /* G++ */
+
+#define O_ACCMODE          0003
+#define O_RDONLY             00
+#define O_WRONLY             01
+#define O_RDWR               02
+#define O_CREAT           0100
+#define O_EXCL            0200
+#define O_NOCTTY          0400
+#define O_TRUNC          01000
+#define O_APPEND         02000
+#define O_NONBLOCK       04000
+#define O_NDELAY       O_NONBLOCK
+#define O_SYNC        04010000
+#define O_FSYNC         O_SYNC
+#define O_ASYNC         020000
+#define O_LARGEFILE  0100000
+#define O_DIRECTORY  0200000
+#define O_NOFOLLOW   0400000
+#define O_CLOEXEC   02000000
+#define O_DIRECT      040000
+#define O_NOATIME   01000000
+#define O_PATH     010000000
+#define O_DSYNC       010000
+#define O_TMPFILE   020200000
+
 /* string.h contains many more functions (see string/string_decl.h), but this is what we have implemented. */
-extern void *memccpy(void *__restrict __dest, __const void *__restrict __src, int __c, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
+__extension__ extern void *memccpy(void *__restrict __dest, __const void *__restrict __src, int __c, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
 extern void *memchr(__const void *__s, int __c, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
 extern int memcmp(__const void *__s1, __const void *__s2, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1, 2)));
 extern void *memcpy(void *__restrict __dest, __const void *__restrict __src, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
