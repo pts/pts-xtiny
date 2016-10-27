@@ -215,4 +215,9 @@ If you need fast execution, you should give up on tiny executable sizes, and
 you should try uClibc (or even EGLIBC or glibc) instead. With dietlibc, many
 library functions are not optimized for speed.
 
+Q21. Is there a non-trivial example program using pts-xtiny?
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+See examples/addrnd.c, which implements a Lagged Fibonacci generator,
+writing random bytes to its stdout.
+
 __END__
