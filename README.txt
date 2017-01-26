@@ -220,4 +220,12 @@ Q21. Is there a non-trivial example program using pts-xtiny?
 See examples/addrnd.c, which implements a Lagged Fibonacci generator,
 writing random bytes to its stdout.
 
+Q22. Does xtiny support -Wl,--gc-sections?
+""""""""""""""""""""""""""""""""""""""""""
+Yes, and you can use -mxtiny-gcs as a shorthand for
+`-ffunction-sections -fdata-sections -Wl,--gc-sections'.
+
+These flags together make sure than unused global variables and functions
+are removed from the output executable, further saving file size.
+
 __END__

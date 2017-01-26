@@ -111,6 +111,10 @@ def wrap_linker(argv, prgdir):
   argi = 1
   linkdirs = []
   is_verbose = False
+  do_gc_sections = False
+  has_custom_linker_script = False
+  has_entry = False
+  m_arg = None
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
@@ -121,7 +125,10 @@ def wrap_linker(argv, prgdir):
         sys.exit(1)
       is_found = True
       cmd[0] = argv[argi]
-      cmd.extend(argv[argi + 1:])
+      subsequent_args = argv[argi + 1:]
+      if '-T' in subsequent_args:
+        has_custom_linker_script = True
+      cmd.extend(subsequent_args)
       assert '-L---' not in cmd
       break
     elif arg == '--xtiny-ld-v':
@@ -130,21 +137,102 @@ def wrap_linker(argv, prgdir):
       sys.stderr.write('fatal: library too early: %s\n' % arg)
       sys.exit(1)
     elif arg == '-L---':
-      # Append -L... directories explicitly specified in the compiler cmdline.
+      # Append -L... directories explicitly specified in the compiler cmdline,
+      # and already saved to linkdirs.
+      #
+      # The linker command line typically has -Lexplicitly -L--- -L/system, and
+      # we want to omit the -L/system.
       cmd[1 : 1] = linkdirs
       linkdirs = []
     elif arg.startswith('-L'):
       linkdirs.append(arg)
+    elif arg == '--gc-sections':
+      do_gc_sections = True
+      cmd.append(arg)
+    elif arg == '-T':
+      # GNU ld expects -T after the .o and .a files, so we do it this late.
+      sys.stderr.write('fatal: -T specified too early')
+      sys.exit(2)
+    elif arg in ('-e', '--entry') or arg.startswith('--entry='):
+      has_entry = True
+      cmd.append(arg)
+    elif arg == '-m' and argi < len(argv):
+      cmd.extend((arg, argv[argi]))
+      m_arg = argv[argi]
+      argi += 1
     else:
       cmd.append(arg)
   assert cmd[0] is not None, 'missing --xtiny-run-ld flag'
+  relink_cmd = []
+  to_remove_after_link = []
+  if do_gc_sections and has_custom_linker_script:
+    # GNU ld 2.24 doesn't support --gc-sections and -T together, so we do it
+    # with 2 steps with -r.
+    i = cmd.index('-T')
+    linker_script = cmd[i + 1]
+    cmd[i : i + 2] = []
+    if not has_entry:
+      cmd.extend(('-e', '_start'))
+    cmd.append('-r')
+    i, output_file_idx = 2, None
+    while i < len(cmd):
+      if cmd[i - 1] == '-o':
+        output_file_idx = i
+      i += 1
+    if output_file_idx is None:
+      output_file = 'a.out'
+      # We could also use tempfile.mkstemp.
+      ro_output_file = output_file + '.xtiny-r.o'
+      cmd.extend(('-o', ro_output_file))
+    else:
+      output_file = cmd[output_file_idx]
+      # We could also use tempfile.mkstemp.
+      ro_output_file = output_file + '.xtiny-r.o'
+      cmd[output_file_idx] = ro_output_file
+    relink_cmd = [cmd[0]]
+    if m_arg is not None:  # Example: -m elf_i386
+      relink_cmd.extend(('-m', m_arg))
+    relink_cmd.extend(('-o', output_file, ro_output_file))
+    relink_cmd.extend(('-T', linker_script))
+    to_remove_after_link = [ro_output_file]
   if is_verbose:
     sys.stderr.write('xtiny running linker: %s\n' % ' '.join(map(pipes.quote, cmd)))
+  def exec_linker():
+    try:
+      os.execvp(cmd[0], cmd)
+    except OSError, e:
+      sys.stderr.write('fatal: exec of linker %s failed: %s\n' % (cmd[0], e))
+      sys.exit(2)
+  if not relink_cmd:
+    exec_linker()
+  def run_in_subprocess(exec_function):
+    pid = os.fork()
+    if not pid:  # Child.
+      try:
+        exec_function()
+      finally:
+        os._exit(125)
+    pid2, status = os.waitpid(pid, 0)
+    assert pid == pid2
+    if status:  # cmd has failed.
+      sys.exit((status >> 8) or status)
   try:
-    os.execvp(cmd[0], cmd)
-  except OSError, e:
-    sys.stderr.write('fatal: Exec of linker %s failed: %s\n' % (cmd[0], e))
-    sys.exit(2)
+    run_in_subprocess(exec_linker)
+    if is_verbose:
+      sys.stderr.write('xtiny running relink: %s\n' % ' '.join(map(pipes.quote, relink_cmd)))
+    def exec_relink():
+      try:
+        os.execvp(relink_cmd[0], relink_cmd)
+      except OSError, e:
+        sys.stderr.write('fatal: exec of relink linker %s failed: %s\n' % (relink_cmd[0], e))
+        sys.exit(2)
+    run_in_subprocess(exec_relink)
+  finally:
+    for filename in to_remove_after_link:
+      try:
+        os.remove(filename)
+      except OSError:
+        pass
 
 
 def main(argv):
@@ -227,6 +315,9 @@ def main(argv):
       do_xtiny_link = True
       continue
     elif arg == '-mno-xtiny-link':  # Specify only if debugging xtiny.
+      # With -mno-xtiny-link gcc stills work, but the linker command-line
+      # contains too many `-L' directories, so `-lm' would try to link
+      # against the system libm.a.
       do_xtiny_link = False
       continue
     elif arg == '-mxtiny-linker-script':  # Specify only if debugging xtiny.
@@ -258,8 +349,10 @@ def main(argv):
     #
     # `ld -T' must be specified after the actual .o and .a files.
     do_xtiny_linker_script = not has_debug
-  if do_xtiny_linker_script and (do_xtiny_gc_sections or has_gc_sections):
-    print >>sys.stderr, 'fatal: if you use -Wl,--gc-sections or -mxtiny-gcs, also specify -mno-xtiny-linker-script'
+  if (do_xtiny_linker_script and
+      (do_xtiny_gc_sections or has_gc_sections) and
+      not do_xtiny_link):
+    print >>sys.stderr, 'fatal: if you use -Wl,--gc-sections or -mxtiny-gcs, you need -mxtiny-link (default) or -mno-xtiny-linker-script'
     sys.exit(2)
   cmd = [compiler, '-m32']
   if is_compiling or is_preproc:
@@ -321,9 +414,6 @@ def main(argv):
                 '-Wl,--build-id=none'))
     if do_xtiny_gc_sections:
       cmd.append('-Wl,--gc-sections')
-    # With do_xtiny_link gcc would still work, but the linker
-    # command-line would contain too many `-L' directories, so `-lm' would try
-    # to link against the system libm.a.
     if do_xtiny_link:
       ld_prog_path = get_bdir_prog_path(compiler, bdir, 'ld')
       if is_clang and ld_prog_path.endswith('/clangld32/ld'):
@@ -348,16 +438,17 @@ def main(argv):
   if do_link:
     # This must be between the .c .o files and the linker script (-T).
     cmd.extend(('%s/lib__xtiny.a' % progdir,))
-    if do_xtiny_linker_script:
-      cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
     if do_xtiny_link:
       cmd.extend(('-L---',))
+  if do_link and do_xtiny_linker_script:
+    # GNU ld expects -T after the .o and .a files, so we do it this late.
+    cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
   if is_verbose:
     sys.stderr.write('xtiny running compiler: %s\n' % ' '.join(map(pipes.quote, cmd)))
   try:
     os.execvp(cmd[0], cmd)
   except OSError, e:
-    sys.stderr.write('fatal: Exec of compiler %s failed: %s\n' % (cmd[0], e))
+    sys.stderr.write('fatal: exec of compiler %s failed: %s\n' % (cmd[0], e))
     sys.exit(2)
 
 
