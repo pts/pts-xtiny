@@ -105,16 +105,16 @@ def get_bdir_prog_path(compiler, bdir, prog):
 
 
 def wrap_linker(argv, prgdir):
-  """When xtiny is called as a linker as bdir/ld --xtiny-link."""
+  """When xtiny is called as a linker as bdir/ld --xtiny-run-ld."""
   cmd = [None]
   argi = 1
   linkdirs = []
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
-    if arg == '--xtiny-link':
+    if arg == '--xtiny-run-ld':
       if argi == len(argv):
-        sys.stderr.write('fatal: missing arg for --xtiny-link')
+        sys.stderr.write('fatal: missing arg for --xtiny-run-ld')
         sys.exit(1)
       is_found = True
       cmd[0] = argv[argi]
@@ -132,7 +132,7 @@ def wrap_linker(argv, prgdir):
       linkdirs.append(arg) 
     else:
       cmd.append(arg)
-  assert cmd[0] is not None, 'missing --xtiny-link flag'
+  assert cmd[0] is not None, 'missing --xtiny-run-ld flag'
   # TODO(pts): Display the command if -v was given.
   try:
     os.execvp(cmd[0], cmd)
@@ -155,7 +155,7 @@ def main(argv):
   except OSError, e:
     pass
   progdir = os.path.dirname(prog)
-  if '--xtiny-link' in argv[1:]:
+  if '--xtiny-run-ld' in argv[1:]:
     return wrap_linker(argv, progdir)
   compiler = argv[1]
   compiler_basename = os.path.basename(compiler)
@@ -297,7 +297,7 @@ def main(argv):
           # TODO(pts): Use the built-in ld if available.
           ld_prog_path = 'ld'
       assert ',' not in ld_prog_path, ld_prog_path
-      cmd.extend(('-B', '%s/bdir' % progdir, '-Wl,--xtiny-link',
+      cmd.extend(('-B', '%s/bdir' % progdir, '-Wl,--xtiny-run-ld',
                   '-Wl,' + ld_prog_path))
   cmd.extend(args_kept)
   if do_link:
