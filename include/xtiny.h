@@ -566,7 +566,7 @@ do { \
   return (type) (res); \
 } while (0)
 
-#define _syscall0(type,name) \
+#define _syscall0_nomemory(type,name) \
 static __inline__ type name(void) { \
 long __res; \
 __asm__ __volatile__ ("int $0x80" \
@@ -580,11 +580,21 @@ static __inline__ type name(type1 __##arg1) { \
 long __res; \
 __asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
+  : "0" (__NR_##name),"b" ((long)(__##arg1)) \
+  : "memory");  /* No need to specify "cc" (for eflags, also tried it) or "esi" or "edi" here, see http://lxr.free-electrons.com/source/arch/x86/kernel/entry_32.S?v=3.14#L17 and SAVE_ALL */ \
+__syscall_return(type,__res); \
+}
+
+#define _syscall1_nomemory(type,name,type1,arg1) \
+static __inline__ type name(type1 __##arg1) { \
+long __res; \
+__asm__ __volatile__ ("int $0x80" \
+  : "=a" (__res) \
   : "0" (__NR_##name),"b" ((long)(__##arg1))); \
 __syscall_return(type,__res); \
 }
 
-#define _syscall1_noreturn(name,type1,arg1) \
+#define _syscall1_noreturn_nomemory(name,type1,arg1) \
 static __inline__ void __attribute__((noreturn)) name(type1 __##arg1) { \
 long __res; \
 __asm__ __volatile__ ("int $0x80" \
@@ -593,7 +603,7 @@ __asm__ __volatile__ ("int $0x80" \
 __builtin_unreachable(); \
 }
 
-#define _syscall2(type,name,type1,arg1,type2,arg2) \
+#define _syscall2_nomemory(type,name,type1,arg1,type2,arg2) \
 static __inline__ type name(type1 __##arg1,type2 __##arg2) { \
 long __res; \
 __asm__ __volatile__ ("int $0x80" \
@@ -602,7 +612,34 @@ __asm__ __volatile__ ("int $0x80" \
 __syscall_return(type,__res); \
 }
 
+#define _syscall2(type,name,type1,arg1,type2,arg2) \
+static __inline__ type name(type1 __##arg1,type2 __##arg2) { \
+long __res; \
+__asm__ __volatile__ ("int $0x80" \
+  : "=a" (__res) \
+  : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)) : "memory"); \
+__syscall_return(type,__res); \
+}
+
+#define _syscall3_nomemory(type,name,type1,arg1,type2,arg2,type3,arg3) \
+static __inline__ type name(type1 __##arg1,type2 __##arg2,type3 __##arg3) { \
+long __res; \
+__asm__ __volatile__ ("int $0x80" \
+  : "=a" (__res) \
+  : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), "d" ((long)(__##arg3))); \
+__syscall_return(type,__res); \
+}
+
 #define _syscall3(type,name,type1,arg1,type2,arg2,type3,arg3) \
+static __inline__ type name(type1 __##arg1,type2 __##arg2,type3 __##arg3) { \
+long __res; \
+__asm__ __volatile__ ("int $0x80" \
+  : "=a" (__res) \
+  : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), "d" ((long)(__##arg3)) : "memory"); \
+__syscall_return(type,__res); \
+}
+
+#define _syscall3_nomemory(type,name,type1,arg1,type2,arg2,type3,arg3) \
 static __inline__ type name(type1 __##arg1,type2 __##arg2,type3 __##arg3) { \
 long __res; \
 __asm__ __volatile__ ("int $0x80" \
@@ -612,7 +649,7 @@ __asm__ __volatile__ ("int $0x80" \
 __syscall_return(type,__res); \
 }
 
-#define _syscall4(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4) \
+#define _syscall4_nomemory(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4) \
 static __inline__ type name (type1 __##arg1, type2 __##arg2, type3 __##arg3, type4 __##arg4) { \
 long __res; \
 __asm__ __volatile__ ("int $0x80" \
@@ -622,7 +659,16 @@ __asm__ __volatile__ ("int $0x80" \
 __syscall_return(type,__res); \
 }
 
-#define _syscall5(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5) \
+#define _syscall4(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4) \
+static __inline__ type name (type1 __##arg1, type2 __##arg2, type3 __##arg3, type4 __##arg4) { \
+long __res; \
+__asm__ __volatile__ ("int $0x80" \
+  : "=a" (__res) \
+  : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), "d" ((long)(__##arg3)),"S" ((long)(__##arg4)) : "memory"); \
+__syscall_return(type,__res); \
+}
+
+#define _syscall5_nomemory(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5) \
 static __inline__ type name (type1 __##arg1,type2 __##arg2,type3 __##arg3,type4 __##arg4,type5 __##arg5) { \
 long __res; \
 __asm__ __volatile__ ("int $0x80" \
@@ -632,7 +678,16 @@ __asm__ __volatile__ ("int $0x80" \
 __syscall_return(type,__res); \
 }
 
-#define _syscall6(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5,type6,arg6) \
+#define _syscall5(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5) \
+static __inline__ type name (type1 __##arg1,type2 __##arg2,type3 __##arg3,type4 __##arg4,type5 __##arg5) { \
+long __res; \
+__asm__ __volatile__ ("int $0x80" \
+  : "=a" (__res) \
+  : "0" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), "d" ((long)(__##arg3)),"S" ((long)(__##arg4)),"D" ((long)(__##arg5)) : "memory"); \
+__syscall_return(type,__res); \
+}
+
+#define _syscall6_nomemory(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5,type6,arg6) \
 static __inline__ type name (type1 __##arg1,type2 __##arg2,type3 __##arg3,type4 __##arg4,type5 __##arg5,type6 __##arg6) { \
 long __res; \
 __asm__ __volatile__ ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80 ; pop %%ebp" \
@@ -643,22 +698,31 @@ __asm__ __volatile__ ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80
 __syscall_return(type,__res); \
 }
 
+#define _syscall6(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4,type5,arg5,type6,arg6) \
+static __inline__ type name (type1 __##arg1,type2 __##arg2,type3 __##arg3,type4 __##arg4,type5 __##arg5,type6 __##arg6) { \
+long __res; \
+__asm__ __volatile__ ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80 ; pop %%ebp" \
+  : "=a" (__res) \
+  : "i" (__NR_##name),"b" ((long)(__##arg1)),"c" ((long)(__##arg2)), "d" ((long)(__##arg3)),"S" ((long)(__##arg4)),"D" ((long)(__##arg5)), "0" ((long)(__##arg6)) : "memory"); \
+__syscall_return(type,__res); \
+}
+
 /* extern int errno; */
 extern char **environ __asm__("__xtiny_environ");
 
-_syscall1(int,close,int,fd)
+_syscall1_nomemory(int,close,int,fd)
 _syscall3(int,open,const char *,pathname,int,flags,mode_t,mode)
 _syscall1(int,chdir,const char*,dir)
 _syscall1(int,chroot,const char*,dir)
-_syscall1_noreturn(sys_exit,int,exitcode)
+_syscall1_noreturn_nomemory(sys_exit,int,exitcode)
 _syscall3(int,execve,const char*,file,char**,argv,char**,envp)
-_syscall0(uid_t,geteuid)
-_syscall0(uid_t,getegid)
-_syscall0(gid_t,getuid)
-_syscall0(gid_t,getgid)
-_syscall1(mode_t,umask,mode_t,mask)
-_syscall2(int,setreuid,uid_t,r,uid_t,e)
-_syscall2(int,setregid,gid_t,r,gid_t,e)
+_syscall0_nomemory(uid_t,geteuid)
+_syscall0_nomemory(uid_t,getegid)
+_syscall0_nomemory(gid_t,getuid)
+_syscall0_nomemory(gid_t,getgid)
+_syscall1_nomemory(mode_t,umask,mode_t,mask)
+_syscall2_nomemory(int,setreuid,uid_t,r,uid_t,e)
+_syscall2_nomemory(int,setregid,gid_t,r,gid_t,e)
 _syscall2(int,sys_setgroups32,int,s,const gid_t*,l)
 _syscall3(ssize_t,write,int,fd,const void *,buf,size_t,count)
 _syscall3(ssize_t,read,int,fd,void *,buf,size_t,count)
