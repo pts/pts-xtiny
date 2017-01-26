@@ -109,10 +109,12 @@ def wrap_linker(argv, prgdir):
   cmd = [None]
   argi = 1
   linkdirs = []
+  is_verbose = False
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
     if arg == '--xtiny-run-ld':
+      # The parent xtiny has called us with `--xtiny-run-ld <ld-prog>'.
       if argi == len(argv):
         sys.stderr.write('fatal: missing arg for --xtiny-run-ld')
         sys.exit(1)
@@ -121,6 +123,8 @@ def wrap_linker(argv, prgdir):
       cmd.extend(argv[argi + 1:])
       assert '-L---' not in cmd
       break
+    elif arg == '--xtiny-ld-v':
+      is_verbose = True
     elif arg.startswith('-l'):
       sys.stderr.write('fatal: library too early: %s\n' % arg)
       sys.exit(1)
@@ -133,7 +137,8 @@ def wrap_linker(argv, prgdir):
     else:
       cmd.append(arg)
   assert cmd[0] is not None, 'missing --xtiny-run-ld flag'
-  # TODO(pts): Display the command if -v was given.
+  if is_verbose:
+    sys.stderr.write('xtiny running linker: %s\n' % ' '.join(map(pipes.quote, cmd)))
   try:
     os.execvp(cmd[0], cmd)
   except OSError, e:
@@ -297,6 +302,8 @@ def main(argv):
           # TODO(pts): Use the built-in ld if available.
           ld_prog_path = 'ld'
       assert ',' not in ld_prog_path, ld_prog_path
+      if is_verbose:
+        cmd.append('-Wl,--xtiny-ld-v')
       cmd.extend(('-B', '%s/bdir' % progdir, '-Wl,--xtiny-run-ld',
                   '-Wl,' + ld_prog_path))
   cmd.extend(args_kept)
@@ -317,7 +324,7 @@ def main(argv):
     if do_xtiny_link:
       cmd.extend(('-L---',))
   if is_verbose:
-    sys.stderr.write('Running: %s\n' % ' '.join(map(pipes.quote, cmd)))
+    sys.stderr.write('xtiny running compiler: %s\n' % ' '.join(map(pipes.quote, cmd)))
   try:
     os.execvp(cmd[0], cmd)
   except OSError, e:
