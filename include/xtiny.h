@@ -704,7 +704,7 @@ __XTINY_STATIC_ASSERT(SizeofUint64T, sizeof(uint64_t) == 8);
 
 #ifdef __GNUG__
 #define NULL __null
-#else   /* G++ */  
+#else   /* G++ */
 #ifndef __cplusplus
 #define NULL ((void *)0)
 #else   /* C++ */
