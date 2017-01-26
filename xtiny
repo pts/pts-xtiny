@@ -31,6 +31,7 @@
 #            Maybe uclibc?
 # TODO(pts): doc: What are the similar projects?
 # TODO(pts): doc: -fno-ident
+# TODO(pts): Why is `xtiny gcc -g' ... `strip' output so large?
 #
 # Sine xtiny.h is in an `-isystem' directory, to get warnings for it,
 # compile it with: `-Werror -Wsystem-headers', in addition to the usual `-W
@@ -133,7 +134,7 @@ def wrap_linker(argv, prgdir):
       cmd[1 : 1] = linkdirs
       linkdirs = []
     elif arg.startswith('-L'):
-      linkdirs.append(arg) 
+      linkdirs.append(arg)
     else:
       cmd.append(arg)
   assert cmd[0] is not None, 'missing --xtiny-run-ld flag'
@@ -175,6 +176,9 @@ def main(argv):
   is_preproc = False
   bdir = None
   do_xtiny_link = True
+  do_xtiny_gc_sections = False
+  do_xtiny_linker_script = None
+  has_gc_sections = False
 
   argi = 2  # Skip xtiny (argv[0]) and the compiler.
   while argi < len(argv):
@@ -218,16 +222,45 @@ def main(argv):
     elif arg == '-nostdinc':
       has_nostdinc = True
       continue
-    elif arg == '-mxtiny-link':
+    elif arg == '-mxtiny-link':  # Specify only if debugging xtiny.
+      # TODO(pts): How is this useful for debugging.
       do_xtiny_link = True
       continue
-    elif arg == '-mno-xtiny-link':
+    elif arg == '-mno-xtiny-link':  # Specify only if debugging xtiny.
       do_xtiny_link = False
       continue
+    elif arg == '-mxtiny-linker-script':  # Specify only if debugging xtiny.
+      do_xtiny_linker_script = True
+      continue
+    elif arg == '-mno-xtiny-linker-script':  # Specify only if debugging xtiny.
+      do_xtiny_linker_script = False
+      continue
+    elif arg == '-mxtiny-gcs':
+      do_xtiny_gc_sections = True
+      continue
+    elif arg == '-mno-xtiny-gcs':
+      do_xtiny_gc_sections = False
+      continue
+    elif arg == '-Wl,--gc-sections':
+      has_gc_sections = True
     elif arg in ('-static-libgcc', '-nostdlib', '-s', '-static',
                  '-m32'):
       continue
     args_kept.append(arg)
+  if do_xtiny_linker_script is None:
+    # We don't specify a custom linker script if debugging (i.e. -g) is
+    # enabled, because gdb doesn't understand our custom stripped ELF. In
+    # this case the normal ELF linker output (with `ld -static') will be
+    # created, linking against the xtiny libc.
+    #
+    # There is no search path for linker scripts, even a relative path would
+    # make ld look for only that name.
+    #
+    # `ld -T' must be specified after the actual .o and .a files.
+    do_xtiny_linker_script = not has_debug
+  if do_xtiny_linker_script and (do_xtiny_gc_sections or has_gc_sections):
+    print >>sys.stderr, 'fatal: if you use -Wl,--gc-sections or -mxtiny-gcs, also specify -mno-xtiny-linker-script'
+    sys.exit(2)
   cmd = [compiler, '-m32']
   if is_compiling or is_preproc:
     # For detecting whether <xtiny.h> should be included.
@@ -273,6 +306,8 @@ def main(argv):
       if not is_clang:  # Clang 3.4 doesn't have these.
         cmd.extend(('-mpreferred-stack-boundary=2',
                     '-falign-jumps=1', '-falign-loops=1'))
+    if do_xtiny_gc_sections:
+      cmd.extend(('-ffunction-sections', '-fdata-sections'))
   if do_link:
     # -s is not necessary here, it would be passed as `ld -s', but `ld -T'
     # with the linker script overrides that. We specigy -s anyway so that it
@@ -284,6 +319,8 @@ def main(argv):
     # -static improves the error message.
     cmd.extend(('-static', '-nostdlib', '-Wl,-z,norelro',
                 '-Wl,--build-id=none'))
+    if do_xtiny_gc_sections:
+      cmd.append('-Wl,--gc-sections')
     # With do_xtiny_link gcc would still work, but the linker
     # command-line would contain too many `-L' directories, so `-lm' would try
     # to link against the system libm.a.
@@ -296,7 +333,7 @@ def main(argv):
         # Please note that there is no problem for non-linking (e.g. -E, -c)
         # with the pts-clang wrapper, so we don't modify it.
         cmd[0] += '.bin'
-        if not has_debug:
+        if do_xtiny_linker_script:
           # pts-clang uses the GNU gold linker, which ignores -T for the linker
           # script. Let's use the system ld instead.
           # TODO(pts): Use the built-in ld if available.
@@ -304,22 +341,14 @@ def main(argv):
       assert ',' not in ld_prog_path, ld_prog_path
       if is_verbose:
         cmd.append('-Wl,--xtiny-ld-v')
+      # This must be appended last because of --xtiny-run-ld.
       cmd.extend(('-B', '%s/bdir' % progdir, '-Wl,--xtiny-run-ld',
                   '-Wl,' + ld_prog_path))
   cmd.extend(args_kept)
   if do_link:
     # This must be between the .c .o files and the linker script (-T).
     cmd.extend(('%s/lib__xtiny.a' % progdir,))
-    if not has_debug:
-      # We don't specify a custom linker script if debugging (i.e. -g) is
-      # enabled, because gdb doesn't understand our custom stripped ELF. In
-      # this case the normal ELF linker output (with `ld -static') will be
-      # created, linking against the xtiny libc.
-      #
-      # There is no search path for linker scripts, even a relative path would
-      # make ld look for only that name.
-      #
-      # `ld -T' must be specified after the actual .o and .a files.
+    if do_xtiny_linker_script:
       cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
     if do_xtiny_link:
       cmd.extend(('-L---',))
