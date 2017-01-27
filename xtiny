@@ -30,7 +30,6 @@
 #            socketcall, but no individual calls. What about constness etc.
 #            Maybe uclibc?
 # TODO(pts): doc: What are the similar projects?
-# TODO(pts): doc: -fno-ident
 # TODO(pts): Why is `xtiny gcc -g' ... `strip' output so large?
 #
 # Sine xtiny.h is in an `-isystem' directory, to get warnings for it,
@@ -311,7 +310,7 @@ def main(argv):
       has_nostdinc = True
       continue
     elif arg == '-mxtiny-link':  # Specify only if debugging xtiny.
-      # TODO(pts): How is this useful for debugging.
+      # TODO(pts): How is this useful for debugging?
       do_xtiny_link = True
       continue
     elif arg == '-mno-xtiny-link':  # Specify only if debugging xtiny.
@@ -372,6 +371,7 @@ def main(argv):
     # because it has the unwind tables.
     cmd.extend(('-fno-stack-protector', '-fomit-frame-pointer'))
     if not has_debug:  # CFI, .eh_frame .eh_frame_hdr
+      # -fno-unwind-tables is the default, we just play it safe.
       cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',))
     if has_nostdinc:
       # This wipes out the include list for gcc, clang and pts-clang.
@@ -395,6 +395,8 @@ def main(argv):
         # would remove gcc-include as well.
         cmd.extend(('-isysroot', '%s/noisysroot' % progdir))
     if opt in (None, '-Os'):
+      # -fno-ident prevents generating the .comment section by preventing
+      # this in the generated .s file: .ident  "GCC: ..."
       cmd.extend(('-Os', '-fno-ident', '-falign-functions=1'))
       if not is_clang:  # Clang 3.4 doesn't have these.
         cmd.extend(('-mpreferred-stack-boundary=2',
