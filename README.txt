@@ -263,6 +263,10 @@ Since xtiny.h is in an `-isystem' directory, to get warnings for it,
 compile it with: `-Werror -Wsystem-headers', in addition to the usual
 `-W -Wall -Wextra'.
 
+Q26. How can I check in a .c file if it's compiling with xtiny?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Use `#ifdef __XTINY__'. As usual, `#if __XTINY__' also works.
+
 Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
