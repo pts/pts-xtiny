@@ -410,8 +410,14 @@ def main(argv):
     # -static is passed to ld. Even without that linking .so files wouldn't
     # work (could not read symbols: File in wrong format). But specifying
     # -static improves the error message.
-    cmd.extend(('-static', '-nostdlib', '-Wl,-z,norelro',
-                '-Wl,--build-id=none'))
+    #
+    # -Wl,-z,norelro is not needed, it affects only dynamic executables, and
+    # it will emit a PT_GNU_RELRO to the program headers.
+    # http://www.airs.com/blog/archives/189
+    #
+    # Without -Wl,--build-id=none, a PT_NOTE (.note.gnu.build-id) would be
+    # added to the program headers.
+    cmd.extend(('-static', '-nostdlib', '-Wl,--build-id=none'))
     if do_xtiny_gc_sections:
       cmd.append('-Wl,--gc-sections')
     if do_xtiny_link:
