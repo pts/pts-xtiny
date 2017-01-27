@@ -274,6 +274,14 @@ Useful links
 * elfkickers (includes sstrip):
   http://www.muppetlabs.com/~breadbox/software/elfkickers.htmls
 
+How low can we go with -mno-xtiny-linker-script?
+""""""""""""""""""""""""""""""""""""""""""""""""
+We are almost there if we run sstrip afterwards on the executable.
+Unfortunately gcc generates a `.section        .note.GNU-stack,"",@progbits'
+line, which generates a PT_GNU_STACK program header, which we don't need.
+
+See also https://wiki.gentoo.org/wiki/Hardened/GNU_stack_quickstart
+
 How is xtiny.scr different from sstrip
 """"""""""""""""""""""""""""""""""""""
 What was compared:
