@@ -1,6 +1,21 @@
-#! /usr/bin/python
+#! /bin/sh
 # by pts@fazekas.hu at Sun Oct 19 13:46:41 CEST 2014
-#
+
+""":" #xtiny: wrapper tool for creating tiny i386 executables
+
+type python2.7 >/dev/null 2>&1 && exec python2.7 -- "$0" ${1+"$@"}
+type python2.6 >/dev/null 2>&1 && exec python2.6 -- "$0" ${1+"$@"}
+type python2.5 >/dev/null 2>&1 && exec python2.5 -- "$0" ${1+"$@"}
+type python2.4 >/dev/null 2>&1 && exec python2.4 -- "$0" ${1+"$@"}
+exec python -- ${1+"$@"}; exit 1
+
+pts-xtiny is a collection of tools and a small and incomplete libc for
+creating tiny (200-byte), statically linked ELF executables on Linux i386.
+
+Instead of your regular `gcc ...' command, run `xtiny gcc ...'. Use
+`#include <xtiny.h>' for some library (libc) functions. See
+http://github.com/pts/pts-xtiny for more information.
+"""
 
 import os
 import os.path
