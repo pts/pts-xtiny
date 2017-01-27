@@ -399,7 +399,12 @@ def main(argv):
     #
     # Without -Wl,--build-id=none, a PT_NOTE (.note.gnu.build-id) would be
     # added to the program headers.
-    cmd.extend(('-static', '-nostdlib', '-Wl,--build-id=none'))
+    #
+    # -Wl,-N unifies the .text and .data (and .bss) sectons, making them both
+    # rwx, and emitting a single PT_LOAD program header for them. This makes a
+    # difference if do_xtiny_linker_script is false. This works with ld and
+    # gold.
+    cmd.extend(('-static', '-nostdlib', '-Wl,--build-id=none', '-Wl,-N'))
     if do_xtiny_gc_sections:
       cmd.append('-Wl,--gc-sections')
     if do_xtiny_link:
