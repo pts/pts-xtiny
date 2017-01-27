@@ -25,7 +25,7 @@ dd 0                               ;   e_flags
 dw ehdrsize                        ;   e_ehsize
 dw phdrsize                        ;   e_phentsize
 dw 1                               ;   e_phnum
-dw 0                               ;   e_shentsize
+dw 40                              ;   e_shentsize
 dw 0                               ;   e_shnum
 dw 0                               ;   e_shstrndx
 ehdrsize equ $ - ehdr

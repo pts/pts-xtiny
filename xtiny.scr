@@ -38,8 +38,8 @@ SECTIONS {
     /* ^^^    dd      0, 0                            ;   32 e_shoff, e_flags */
     SHORT(__ehdrsize) SHORT(__phdrsize)
     /* ^^^    dw      __ehdrsize, __phdrsize          ;   40 e_ehsize, e_phentsize */
-    SHORT(1) SHORT(0) SHORT(0) SHORT(0)
-    /* ^^^    dw      1, 0, 0, 0                      ;   e_phnum, e_shentsize, e_shnum, e_shstrndx */
+    SHORT(1) SHORT(40) SHORT(0) SHORT(0)
+    /* ^^^    dw      1, 40, 0, 0                     ;   e_phnum, e_shentsize, e_shnum, e_shstrndx */
     __ehdrsize = ABSOLUTE(.) - __ehdr; /* __ehdrsize equ $ - __ehdr; */
     __phdr = ABSOLUTE(.); /* ; Elf32_Phdr */
     LONG(1) LONG(0) LONG(__myorg) LONG(__myorg)
