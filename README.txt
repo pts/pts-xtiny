@@ -55,6 +55,8 @@ Q4. Which operating systems are supported?
 """"""""""""""""""""""""""""""""""""""""""
 Linux only, and also FreeBSD in Linux emulation mode.
 
+xtiny is not able to produce .exe files (for Windows) or macOS executables.
+
 Q5. Do the executables link against glibc, eglibc, uClibc, dietlibc?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 No, they link statically against the xtiny libc only, which is included in
@@ -227,5 +229,84 @@ Yes, and you can use -mxtiny-gcs as a shorthand for
 
 These flags together make sure than unused global variables and functions
 are removed from the output executable, further saving file size.
+
+Q23. Are executables produced by xtiny as secure as default binaries by gcc?
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+No, executables produced by xtiny are less secure, because xtiny specified
+`gcc -fno-stack-protector' and it has rwx pages (including stack pages).
+
+Technical notes
+~~~~~~~~~~~~~~~
+Useful links
+""""""""""""
+* elfkickers (includes sstrip):
+  http://www.muppetlabs.com/~breadbox/software/elfkickers.htmls
+
+How is xtiny.scr different from sstrip
+""""""""""""""""""""""""""""""""""""""
+What was compared:
+
+* xtiny.scr: xtiny gcc ... -o sample
+* sstrip: xtiny gcc -mno-xtiny-linker-script ... -o samplebs && sstrip samplebs
+* gcc-4.8.4, GNU ld-2.24
+
+Differences:
+
+* The system ID at ELF offset 6 is 3 (GNU/Linux) for sample and 0 (SYSV)
+  for samplebs.
+* Symbols are ordered differently, e.g. the entry point (e_entry) is
+  different. But the total size of the sections in the file is the same.
+* (The smallest p_vaddr is the same: 0x08048000.)
+* samplebs is 64 bytes larger than sample, because it contains 3 (instead of 1)
+  program header entries.
+  * Program headers hexdump:
+    # Program header entry 0/1 in sample:
+    01000000 p_type: LOAD
+    00000000 p_offset
+    00800408 p_vaddr
+    00800408 p_paddr
+    28170000 p_filesz
+    B0170000 p_memsz
+    07000000 p_flags: rwx
+    00100000 p_align
+    # Program header entry 0/3 in samplebs:
+    01000000 p_type: LOAD
+    00000000 p_offset
+    00800408 p_vaddr
+    00800408 p_paddr
+    68170000 p_filesz
+    68170000 p_memsz
+    05000000 p_flags: r-x
+    00100000 p_align
+    # Program header entry 1/3 in samplebs:
+    01000000 p_type: LOAD
+    68170000 p_offset
+    68A70408 p_vaddr
+    68A70408 p_paddr
+    00000000 p_filesz
+    88000000 p_memsz
+    06000000 p_flags: rw-
+    00100000 p_align
+    # Program header entry 2/3 in samplebs:
+    51E57464 p_type: STACK
+    00000000 p_offset
+    00000000 p_vaddr
+    00000000 p_paddr
+    00000000 p_filesz
+    00000000 p_memsz
+    07000000 p_flags
+    10000000 p_align: 2**4
+  * The STACK entry can probably be omitted (can it?).
+  * The two LOAD entries are adjacent and can be merged to a single rwx page.
+
+TODOs
+~~~~~
+* TODO: Add tiny nasm, as, yasm "Hello, World\n" programs.
+* TODO: Why are there 0s at the end of tgen? Can't we move them to bss?
+* TODO: Why is the file large with: `xtiny gcc -g' + `sstrip'?
+* TODO: Add a better sstrip (which removes STACK and merges LOAD) to xtiny,
+  and use it by default with -mno-xtiny-linker-script. Also make it emit the
+  correct system ID (for FreeBSD compatibility).
+* TODO: gold + sstrip works. gold --gc-sections -r workaround doesn't work.
 
 __END__
