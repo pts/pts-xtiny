@@ -257,6 +257,12 @@ Probably for large executables (>10 kB) upx (http://upx.github.io/) is able to
 reduce the file size even further. Give it a try. But for small executables
 (<6 kB), there is probably no improvement.
 
+Q25. How to get compiler warnings for xtiny.h?
+""""""""""""""""""""""""""""""""""""""""""""""
+Since xtiny.h is in an `-isystem' directory, to get warnings for it,
+compile it with: `-Werror -Wsystem-headers', in addition to the usual
+`-W -Wall -Wextra'.
+
 Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
@@ -331,5 +337,35 @@ TODOs
   correct system ID (for FreeBSD compatibility).
 * TODO: gold + sstrip works. gold --gc-sections -r workaround doesn't work.
 * TODO: Does upx work on larger files emitted by xstatic?
+* TODO: Add -lgcc for long long division etc.
+* TODO: Add lib directory for possible additional user libraries.
+* TODO: Auto-detect GNU gold and use the built-in linker if available.
+  Please note /usr/bin/ld vs /usr/bin/gold.
+* TODO: Enumerate sections:
+  https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/specialsections.html
+* TODO: How to use CONSTRUCTORS etc. in the linker script?
+* TODO: Add support for debugging with gdb. -g shouldn't remove symbols
+  etc., maybe shouldn't use the linker script.
+* TODO: Convert the xtiny tool from Python to .c.
+* TODO: Add C++ support, possibly for many kinds of initializers.
+* TODO: Make it work with clang: now segfault and large binary for
+  pts-clang, and bad string constants for regular clang.
+  clang-3.4.bin: error: unknown argument: '-mpreferred-stack-boundary=2'
+  clang-3.4.bin: error: unknown argument: '-falign-jumps=1'
+  clang-3.4.bin: error: unknown argument: '-falign-loops=1'
+  Linking with the linker script doesn't work, gets linked regularly, and the result is a segfault.
+  __builtin_strlen acts really strangely.
+* TODO: pts-clang bug: no include paths in -E -.
+* TODO: Use glibc's smart __extern_always_inline instead?
+* TODO: Does __builtin_memcpy get hardwired with gcc -O3?
+* TODO: Add proper C++ `const char*' overloads for strstr etc, like
+  glibc string.h
+* TODO: Why is gcc-4.4 tinyt.c two.c only 424 bytes, but with gcc-4.6 it's
+  436 bytes?
+* TODO: Import syscalls from libsys (syscall-only libc, 1999). There is
+  socketcall, but no individual calls. What about constness etc.
+  Maybe uclibc?
+* TODO: doc: What are the similar projects?
+* TODO: Why is `xtiny gcc -g' ... `strip' output so large?
 
 __END__
