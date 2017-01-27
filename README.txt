@@ -35,6 +35,22 @@ file size, the `xtiny' wrapper will add it for you. Unless you specify another
 `-O...' flag, the wrapper also adds some other relevant gcc flags to make
 the output file even smaller.
 
+Q1B. I have a large program. How much can xtiny reduce the executable size?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+The maximum reduction from `gcc -m32' to `xtiny gcc' is about 5400 bytes.
+The maximum reduction from `xstatic gcc' to `xtiny gcc' is about 4100 bytes.
+These numbers are based on compiling examples/hellowr.c with gcc-4.8.4.
+
+So if your original executable is larger than 100 kB, then xtiny probably
+won't make a big difference.
+
+You may want to try reduce your library dependencies, refactor your code,
+and compress the executable (with `upx --brute', https://upx.github.io/)
+first.
+
+See also more ideas here:
+http://ptspts.blogspot.ch/2013/12/how-to-make-smaller-c-and-c-binaries.html
+
 Q2. Which compilers are supported?
 """"""""""""""""""""""""""""""""""
 gcc-4.4 and later, and clang-3.0 and later. Probably it would be possible to
@@ -84,17 +100,17 @@ Most probably they won't work, because most of them need lots of functions
 from the libc (which the xtiny libc doesn't have), and when they were
 compiled, their .h files made some assumptions about the inner data
 structers of that other libc, and these assumptions are most probobaly not
-true for pts-xtiny. So even if it compiles, it will segfault.
+true for pts-xtiny. So even if it compiles, it will probably segfault.
 
 Q9. Can I build and use shared libraries (.so files)?
 """""""""""""""""""""""""""""""""""""""""""""""""""""
-The design of pts-xtiny fundamentally doesn't support that, so that will
+The design of pts-xtiny fundamentally doesn't support .so files, so that will
 never work.
 
 Q10. What gcc flags are recommended?
 """"""""""""""""""""""""""""""""""""
-You don't have to specify -Os, -static or -s, these are automatically
-specified by the `xtiny' wrapper script. Unless you speciy another
+You don't have to specify -m32, -Os, -static or -s, these are automatically
+specified by the `xtiny' wrapper script. Unless you specify another
 `-O...' flag, the wrapper also adds some other relevant gcc flags to make
 the output file even smaller.
 
@@ -235,6 +251,12 @@ Q23. Are executables produced by xtiny as secure as default binaries by gcc?
 No, executables produced by xtiny are less secure, because xtiny specified
 `gcc -fno-stack-protector' and it has rwx pages (including stack pages).
 
+Q24. Can the output of xtiny be further compressed?
+"""""""""""""""""""""""""""""""""""""""""""""""""""
+Probably for large executables (>10 kB) upx (http://upx.github.io/) is able to
+reduce the file size even further. Give it a try. But for small executables
+(<6 kB), there is probably no improvement.
+
 Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
@@ -303,10 +325,11 @@ TODOs
 ~~~~~
 * TODO: Add tiny nasm, as, yasm "Hello, World\n" programs.
 * TODO: Why are there 0s at the end of tgen? Can't we move them to bss?
-* TODO: Why is the file large with: `xtiny gcc -g' + `sstrip'?
+* TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
 * TODO: Add a better sstrip (which removes STACK and merges LOAD) to xtiny,
   and use it by default with -mno-xtiny-linker-script. Also make it emit the
   correct system ID (for FreeBSD compatibility).
 * TODO: gold + sstrip works. gold --gc-sections -r workaround doesn't work.
+* TODO: Does upx work on larger files emitted by xstatic?
 
 __END__
