@@ -84,8 +84,8 @@ SECTIONS {
     *(.fini)
     ASSERT(0, "Old-style destructors (.fini) are not supported.");
   }
-  .pre_init_array : ALIGN(4) SUBALIGN(4) {
-    *(.init_array)
+  .preinit_array : ALIGN(4) SUBALIGN(4) {
+    *(.preinit_array)
     ASSERT(0, "Old-style constructors (.preinit_array) are not supported.");
   }
   .init_array : ALIGN(4) SUBALIGN(4) {
