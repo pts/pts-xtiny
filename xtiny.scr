@@ -96,9 +96,15 @@ SECTIONS {
     *(.fini_array)
     ASSERT(0, "Old-style destructors (.fini_array) are not supported.");
   }
-  /* Thread Local Storage sections -- not supported. */
-  /* .tdata : { *(.tdata .tdata.* .gnu.linkonce.td.*) } */
-  /* .tbss : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) } */
+  /* Thread Local Storage sections supported but not useful yet.
+   * We don't print an error, because it's hard to create these accidentally.
+   */
+  .tdata : ALIGN(4) SUBALIGN(4) {
+    *(.tdata .tdata.* .gnu.linkonce.td.*)
+  }
+  .tbss : ALIGN(4) SUBALIGN(4) {
+    *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon)
+  }
   /* TODO(pts): Add other sections (e.g. initializers) as well? */
   /* We align .data, .rodata and .bss to 4-byte boundary for faster loads on
    * the data bus.
