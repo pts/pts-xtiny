@@ -270,6 +270,13 @@ Q26. How can I check in a .c file if it's compiling with xtiny?
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Use `#ifdef __XTINY__'. As usual, `#if __XTINY__' also works.
 
+Q27. Can xtiny work without a linker script (ld -T)?
+""""""""""""""""""""""""""""""""""""""""""""""""""""
+Yes, please give `xtiny ... -mno-xtiny-linker-script' a try. It should now
+produce executable files of identical size, but not identical content
+(because sections are ordered differently by the linker). If it produces a
+larger executable file, please file a bug.
+
 Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
