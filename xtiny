@@ -22,6 +22,7 @@ import os.path
 import pipes
 import re
 import stat
+import struct
 import subprocess
 import sys
 
@@ -84,6 +85,114 @@ def get_bdir_prog_path(compiler, bdir, prog):
   return data[:-1]
 
 
+def run_in_subprocess(function, args):
+  """Runs function(*args) in a child process, waits and propagates failure."""
+  pid = os.fork()
+  if not pid:  # Child.
+    try:
+      function(*args)
+    finally:
+      os._exit(125)
+  pid2, status = os.waitpid(pid, 0)
+  assert pid == pid2
+  if status:  # cmd has failed.
+    # This doesn't propagate WIFSIGNALED correctly, but all we care is that
+    # the exit status is nonzero on failure.
+    sys.exit((status >> 8) or status)
+
+
+def _exec_command(cmd, cmd_name):
+  try:
+    os.execvp(cmd[0], cmd)
+  except OSError, e:
+    sys.stderr.write(
+        'fatal: exec of %s %s failed: %s\n' % (cmd_name, cmd[0], e))
+    sys.exit(2)
+
+
+def run_command(cmd, cmd_name, is_verbose, do_exec):
+  """Run the specified command and maybe exit.
+
+  If the command fails (i.e. non-zero exit status), exit, propagating the
+  exit status.
+
+  Args:
+    cmd: A sequence of strings, cmd[0] is the command name, cmd[1:] are the
+      arguments (thus cmd is argv). os.execvp is used, so cmd[0] will be
+      looked up on getenv('PATH').
+    cmd_name: A human-readable single-word string explaining what the command
+      does. For debugging.
+    is_verbose: bool indicating whether to print cmd before running it.
+    do_exec: bool indicating whether to exit even after cmd has succeded (zero
+      exit status). This is implemented by execing (i.e. execvp(3)).
+  """
+  if is_verbose:
+    sys.stderr.write('xtiny running %s: %s\n' % (
+        cmd_name, ' '.join(map(pipes.quote, cmd))))
+  args = (cmd, cmd_name)
+  if do_exec:
+    _exec_command(*args)
+  else:
+    run_in_subprocess(_exec_command, args)
+
+
+def remove_note_gnu_stack_from_elfo(filename):
+  """Removes the .note.GNU-stack section from an ELF relocatable.
+
+  Actually it just renames the section so that GNU ld doesn't recognize it,
+  and thus it won't emit a program header PT_GNU_STACK.
+
+  Args:
+    filename: Input filename. The file ill be modified in place.
+  Returns:
+    bool indicating whether .note.GNU-stack was found.
+  """
+  f = open(filename, 'rb+')
+  try:
+    ehdata = f.read(0x34)
+    if len(ehdata) != 0x34:
+      raise ValueError
+    # https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
+    if not ehdata.startswith('\x7fELF\1\1\1'):
+      raise ValueError('Not a 32-bit MSB-first ELF v1 file.')
+    (e_phoff, e_shoff, e_flags, e_ehsize, e_phentsize, e_phnum, e_shentsize,
+     e_shnum, e_shstrndx) = struct.unpack('<LLLHHHHHH', ehdata[0x1c : 0x34])
+    if e_shentsize != 0x28:
+      raise ValueError
+    if ehdata[0x10] != '\1':
+      raise ValueError('Expected relocatable (.o file).')
+    f.seek(e_shoff + e_shstrndx * 0x28)
+    shdata = f.read(0x28)
+    if len(shdata) != 0x28:
+      raise ValueError
+    sh_offset, sh_size = struct.unpack('<LL', shdata[0x10 : 0x18])
+    if sh_size >> 12:
+      # Typically it's 80..200 bytes.
+      raise ValueError('shstrtab larger than 4 kB.')
+    f.seek(sh_offset)
+    shstrtab = f.read(sh_size)
+    if len(shstrtab) != sh_size:
+      raise ValueError
+    data = '\0' + shstrtab
+    i = data.find('\0.note.GNU-stack\0')
+    if i < 0:
+      return False
+    f.seek(sh_offset + i)  # Offset of '.note.GNU-stack' in .o file.
+    # Anything else with the same size as '.note.GNU-stack').
+    f.write('.note.xty-stack')
+    return True
+  finally:
+    f.close()  # Works even if fout == f.
+
+
+def maybe_remove_files(filenames):
+  for filename in filenames:
+    try:
+      os.remove(filename)
+    except OSError:
+      pass
+
+
 def wrap_linker(argv, prgdir):
   """When xtiny is called as a linker as bdir/ld --xtiny-run-ld."""
   cmd = [None]
@@ -94,6 +203,7 @@ def wrap_linker(argv, prgdir):
   has_custom_linker_script = False
   has_entry = False
   m_arg = None
+  used_object_files = set()
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
@@ -104,14 +214,23 @@ def wrap_linker(argv, prgdir):
         sys.exit(1)
       is_found = True
       cmd[0] = argv[argi]
-      subsequent_args = argv[argi + 1:]
-      if '-T' in subsequent_args:
-        has_custom_linker_script = True
-      cmd.extend(subsequent_args)
-      assert '-L---' not in cmd
+      del argv[:argi + 1]
+      argi = None
       break
     elif arg == '--xtiny-ld-v':
       is_verbose = True
+    elif arg == '--xtiny-ld-uof':
+      while argi < len(argv):
+        arg = argv[argi]
+        argi += 1
+        if arg == '--xtiny-ld-uof-end':
+          break
+        used_object_files.add(arg)
+      else:
+        sys.stderr.write('fatal: missing --xtiny-ld-uof-end')
+        sys.exit(1)
+      # Actual argv elements with used_object_files will come later, since
+      # --xtiny-ld-uof was added early.
     elif arg.startswith('-l'):
       sys.stderr.write('fatal: library too early: %s\n' % arg)
       sys.exit(1)
@@ -142,6 +261,22 @@ def wrap_linker(argv, prgdir):
     else:
       cmd.append(arg)
   assert cmd[0] is not None, 'missing --xtiny-run-ld flag'
+  assert '-L---' not in argv, '-L--- specified too late'
+  if '-T' in argv:
+    has_custom_linker_script = True
+  if used_object_files:
+    uus = used_object_files.difference(argv)
+    if uus:
+      sys.stderr.write(
+          'xtiny: warning: used object file not on linker command-line: %s\n' %
+          '  '.join(uus))
+      sys.exit(1)
+  for arg in argv:
+    if (not arg.startswith('-') and arg.endswith('.o') and
+        arg not in used_object_files):
+      # arg is a filename of a temporary object file.
+      remove_note_gnu_stack_from_elfo(arg)
+  cmd.extend(argv)
   relink_cmd = []
   to_remove_after_link = []
   if do_gc_sections and has_custom_linker_script:
@@ -174,44 +309,12 @@ def wrap_linker(argv, prgdir):
     relink_cmd.extend(('-o', output_file, ro_output_file))
     relink_cmd.extend(('-T', linker_script))
     to_remove_after_link = [ro_output_file]
-  if is_verbose:
-    sys.stderr.write('xtiny running linker: %s\n' % ' '.join(map(pipes.quote, cmd)))
-  def exec_linker():
-    try:
-      os.execvp(cmd[0], cmd)
-    except OSError, e:
-      sys.stderr.write('fatal: exec of linker %s failed: %s\n' % (cmd[0], e))
-      sys.exit(2)
-  if not relink_cmd:
-    exec_linker()
-  def run_in_subprocess(exec_function):
-    pid = os.fork()
-    if not pid:  # Child.
-      try:
-        exec_function()
-      finally:
-        os._exit(125)
-    pid2, status = os.waitpid(pid, 0)
-    assert pid == pid2
-    if status:  # cmd has failed.
-      sys.exit((status >> 8) or status)
   try:
-    run_in_subprocess(exec_linker)
-    if is_verbose:
-      sys.stderr.write('xtiny running relink: %s\n' % ' '.join(map(pipes.quote, relink_cmd)))
-    def exec_relink():
-      try:
-        os.execvp(relink_cmd[0], relink_cmd)
-      except OSError, e:
-        sys.stderr.write('fatal: exec of relink linker %s failed: %s\n' % (relink_cmd[0], e))
-        sys.exit(2)
-    run_in_subprocess(exec_relink)
+    run_command(cmd, 'linker', is_verbose, do_exec=not relink_cmd)
+    # Use do_exec=False so we can clean up files (os.remove) below.
+    run_command(relink_cmd, 'relink-linker', is_verbose, do_exec=False)
   finally:
-    for filename in to_remove_after_link:
-      try:
-        os.remove(filename)
-      except OSError:
-        pass
+    maybe_remove_files(to_remove_after_link)
 
 
 def main(argv):
@@ -246,18 +349,27 @@ def main(argv):
   do_xtiny_gc_sections = False
   do_xtiny_linker_script = None
   has_gc_sections = False
+  # List of .o filenames being written by the current command.
+  output_object_files = []
+  # List of .o filenames specified in the command-line as .o.
+  used_object_files = []
+  is_writing_object_files = False
+  output_file = None
 
   argi = 2  # Skip xtiny (argv[0]) and the compiler.
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
     if not arg.startswith('-'):
-      ext = os.path.splitext(os.path.basename(arg))[1]
+      base, ext = os.path.splitext(os.path.basename(arg))
       if ext in ('.cc', '.cp', '.cxx', '.cpp', '.c++', '.C',  # C++.
                  '.c', '.i', '.ii', '.m', '.mi', '.mm', '.M', '.mii',
                  '.h', '.H', '.hp', '.hxx', '.hpp', '.HPP', '.h++', '.tcc',
                  '.s', '.S', '.sx'):
         is_compiling = True
+        output_object_files.append(base + '.o')
+      elif ext == '.o':
+        used_object_files.append(arg)
     elif arg == '-v':
       is_verbose = True
     elif arg.startswith('-O'):
@@ -268,14 +380,23 @@ def main(argv):
     elif arg == '-E':
       is_preproc = True
       do_link = False
-    elif arg in ('-c', '-S', '-M', '-MM'):
+    elif arg == '-c':
+      is_writing_object_files = True
       do_link = False
+    elif arg in ('-S', '-M', '-MM'):
+      is_writing_object_files = do_link = False
     elif arg.startswith('-B'):
-      if arg == '-B':
+      if len(arg) == 2:
         if argi < len(argv):
           bdir = argv[argi]
       else:
         bdir = arg[2:]
+    elif arg.startswith('-o'):
+      if len(arg) == 2:
+        if argi < len(argv):
+          output_file = argv[argi]
+      else:
+        output_file = arg[2:]
     elif (
         arg in ('--sysroot', '--gcc-toolchain', '-target', '-m64',
                 '-sysld', '--sysld', '-p', '-pg', '-pie', '-fpic', '-fPIC',
@@ -317,6 +438,15 @@ def main(argv):
                  '-m32'):
       continue
     args_kept.append(arg)
+
+  if is_writing_object_files:
+    if output_file is not None:
+      del output_object_files[:]
+      output_object_files.append(output_file)
+  else:
+    del output_object_files[:]
+  #assert 0, output_object_files
+
   if do_xtiny_linker_script is None:
     # We don't specify a custom linker script if debugging (i.e. -g) is
     # enabled, because gdb doesn't understand our custom stripped ELF. In
@@ -425,6 +555,13 @@ def main(argv):
       assert ',' not in ld_prog_path, ld_prog_path
       if is_verbose:
         cmd.append('-Wl,--xtiny-ld-v')
+      if used_object_files:
+        if [1 for fn in used_object_files if ',' in fn]:
+          sys.stderr.write('fatal: comma specified in .o filename')
+          sys.exit(1)
+        cmd.append(
+            '-Wl,--xtiny-ld-uof,%s,--xtiny-ld-uof-end' %
+            ','.join(used_object_files))
       # This must be appended last because of --xtiny-run-ld.
       cmd.extend(('-B', '%s/bdir' % progdir, '-Wl,--xtiny-run-ld',
                   '-Wl,' + ld_prog_path))
@@ -437,13 +574,16 @@ def main(argv):
   if do_link and do_xtiny_linker_script:
     # GNU ld expects -T after the .o and .a files, so we do it this late.
     cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
-  if is_verbose:
-    sys.stderr.write('xtiny running compiler: %s\n' % ' '.join(map(pipes.quote, cmd)))
+  run_command(cmd, 'compiler', is_verbose, do_exec=not output_object_files)
+
+  is_ok = False
   try:
-    os.execvp(cmd[0], cmd)
-  except OSError, e:
-    sys.stderr.write('fatal: exec of compiler %s failed: %s\n' % (cmd[0], e))
-    sys.exit(2)
+    for filename in output_object_files:
+      remove_note_gnu_stack_from_elfo(filename)
+    is_ok = True
+  finally:
+    if not is_ok:
+      maybe_remove_files(output_object_files)
 
 
 if __name__ == '__main__':

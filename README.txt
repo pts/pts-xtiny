@@ -249,7 +249,8 @@ are removed from the output executable, further saving file size.
 Q23. Are executables produced by xtiny as secure as default binaries by gcc?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 No, executables produced by xtiny are less secure, because xtiny specified
-`gcc -fno-stack-protector' and it has rwx pages (including stack pages).
+`gcc -fno-stack-protector' and it has rwx pages (including executable stack
+pages).
 
 Q24. Can the output of xtiny be further compressed?
 """""""""""""""""""""""""""""""""""""""""""""""""""
@@ -283,6 +284,15 @@ Unfortunately gcc generates a `.section        .note.GNU-stack,"",@progbits'
 line, which generates a PT_GNU_STACK program header, which we don't need.
 
 See also https://wiki.gentoo.org/wiki/Hardened/GNU_stack_quickstart
+
+Alignment by ld
+"""""""""""""""
+ld takes the maximum alignment in each .o file (per section?), thus if an
+.s file has `.p2align 7,,127' near the beginning to align to 128 bytes, then
+each .o file will be aligned to 128 bytes.
+
+ld -T tiny.scr doesn't respect such alignments, it will align the first
+section to 4-byte boundary (file offset 0x54).
 
 How is xtiny.scr different from sstrip
 """"""""""""""""""""""""""""""""""""""
