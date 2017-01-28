@@ -271,8 +271,10 @@ Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
 """"""""""""
+* https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
 * elfkickers (includes sstrip):
   http://www.muppetlabs.com/~breadbox/software/elfkickers.htmls
+* https://refspecs.linuxbase.org/LSB_3.0.0/LSB-PDA/LSB-PDA/specialsections.html
 
 How low can we go with -mno-xtiny-linker-script?
 """"""""""""""""""""""""""""""""""""""""""""""""
