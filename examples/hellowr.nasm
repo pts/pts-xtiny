@@ -4,7 +4,13 @@
 ;
 ;   $ nasm -f bin -o hellowr hellowr.nasm && chmod +x hellowr
 ;
-; The output will be 138 bytes.
+; or
+;
+;   $ yasm -f bin -o hellowr hellowr.nasm && chmod +x hellowr
+;
+; The output will be 138 bytes, identical for nasm and yasm.
+;
+; Please note that `-f bin' is optional for both nasm and yasm.
 ;
 
 bits 32
