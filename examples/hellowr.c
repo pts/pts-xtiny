@@ -11,6 +11,11 @@ void _start() {
 int main() {
 #endif
   static const char msg[15] = "Hello, World!\n";
-  (void)!write(1, msg, sizeof msg);
+  int i = sizeof msg, got;
+  while (i > 0) {
+    got = write(1, msg, sizeof msg);
+    if (got <= 0) break;
+    i -= got;
+  }
   exit(0);
 }
