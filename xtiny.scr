@@ -42,17 +42,18 @@ SECTIONS {
     /* ^^^    dw      1, 40, 0, 0                     ;   e_phnum, e_shentsize, e_shnum, e_shstrndx */
     __ehdrsize = ABSOLUTE(.) - __ehdr; /* __ehdrsize equ $ - __ehdr; */
     __phdr = ABSOLUTE(.); /* ; Elf32_Phdr */
-    LONG(1) LONG(0) LONG(__myorg) LONG(__myorg)
+    LONG(1) LONG(__ephdrsize) LONG(__myorg + __ephdrsize) LONG(__myorg + __ephdrsize)
     /* ^^^    dd      1, 0, $$, $$                    ;   p_type, p_offset, p_vaddr, p_paddr */
-    LONG(__p_filesz - __myorg)
+    LONG(__p_filesz - __ephdrsize - __myorg)
     /* ^^^    dd      __p_filesz - __myorg            ;   p_filesz */
-    LONG(__p_memsz - __myorg)
+    LONG(__p_memsz - __ephdrsize - __myorg)
     /* ^^^    dd      __p_memsz - __myorg             ;   p_memsz */
     LONG(7)
     /* ^^^    dd      7                               ;   p_flags (1=executable 2=writable 4=readable) */
     LONG(4)
     /* ^^^    dd      4                               ;   p_align, same as ld -N */
-    __phdrsize = ABSOLUTE(.) - __phdr; /* __phdrsize equ $ - __phdr */
+    __phdrsize = ABSOLUTE(.) - __phdr; /* 0x20; __phdrsize equ $ - __phdr */
+    __ephdrsize = ABSOLUTE(.) - __ehdr;  /* 0x54 */
     PROVIDE(__executable_start = ABSOLUTE(.));
     /* _start is defined in _start.o (compiled from _start.s) in lib__xtiny.a */
     /* No need to specify here: . = ALIGN(4), because SUBALIGN(4) above for
