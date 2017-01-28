@@ -23,7 +23,7 @@ A typical Hello, World program is only 200 bytes:
   $ ls -l a.out
   -rwxr-xr-x 1 pts pts 200 Oct 20 03:15 a.out
 
-The hand-optimized assembly version, compiled from examples/hello.nasm, is
+The hand-optimized assembly version, compiled from examples/hellowr.nasm, is
 138 bytes long, 62 bytes shorter.
 
 After the `gcc' in the command above almost all gcc flags are supported (and

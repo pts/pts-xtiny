@@ -2,7 +2,7 @@
 ;
 ; Compile with:
 ;
-;   $ nasm -f bin -o hello hello.nasm && chmod +x hello
+;   $ nasm -f bin -o hellowr hellowr.nasm && chmod +x hellowr
 ;
 ; The output will be 138 bytes.
 ;
