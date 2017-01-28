@@ -350,6 +350,9 @@ def main(argv):
     # Please note that gdb doesn't need the frame pointer for debugging,
     # because it has the unwind tables.
     cmd.extend(('-fno-stack-protector', '-fomit-frame-pointer'))
+    # -fno-ident prevents generating the .comment section by preventing
+    # this in the generated .s file: .ident  "GCC: ..."
+    cmd.append('-fno-ident')
     if not has_debug:  # CFI, .eh_frame .eh_frame_hdr
       # -fno-unwind-tables is the default, we just play it safe.
       cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',))
@@ -375,9 +378,7 @@ def main(argv):
         # would remove gcc-include as well.
         cmd.extend(('-isysroot', '%s/noisysroot' % progdir))
     if opt in (None, '-Os'):
-      # -fno-ident prevents generating the .comment section by preventing
-      # this in the generated .s file: .ident  "GCC: ..."
-      cmd.extend(('-Os', '-fno-ident', '-falign-functions=1'))
+      cmd.extend(('-Os', '-falign-functions=1'))
       if not is_clang:  # Clang 3.4 doesn't have these.
         cmd.extend(('-mpreferred-stack-boundary=2',
                     '-falign-jumps=1', '-falign-loops=1'))
