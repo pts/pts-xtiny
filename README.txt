@@ -8,7 +8,8 @@ Tutorial on Creating Really Teensy ELF Executables for Linux''
 (http://www.muppetlabs.com/~breadbox/software/tiny/teensy.html). pts-xtiny
 achieves almost the same, tiny file size as indicated there, but without the
 programmer having to write any assembly code. The ELF file generation is
-done using a GNU ld linker script.
+done using a GNU ld linker script or some custom flag to ld and
+post-processing the output files.
 
 FAQ
 ~~~
@@ -125,7 +126,8 @@ Q11. What are the dependencies to run pts-xtiny?
 * a Linux i386 or amd64 system
 * gcc >=4.4 that can compile for the i386 target
 * the GNU linker: the ld tool GNU Binutils (other linkers such as gold
-  without linker script (`ld -T') support won't work)
+  without linker script (`ld -T') support won't work, specify
+  `xtiny ... -mno-xtiny-linker-script' to use them)
 * Python >=2.4 (This may get removed in the future when the `xtiny' wrapper
   script gets rewritten in C.)
 
@@ -277,13 +279,13 @@ Useful links
   http://www.muppetlabs.com/~breadbox/software/elfkickers.htmls
 * https://refspecs.linuxbase.org/LSB_3.0.0/LSB-PDA/LSB-PDA/specialsections.html
 
-How low can we go with -mno-xtiny-linker-script?
-""""""""""""""""""""""""""""""""""""""""""""""""
-We are almost there if we run sstrip afterwards on the executable.
-Unfortunately gcc generates a `.section        .note.GNU-stack,"",@progbits'
+Executable stack info
+"""""""""""""""""""""
+gcc generates a `.section        .note.GNU-stack,"",@progbits'
 line, which generates a PT_GNU_STACK program header, which we don't need.
-
-See also https://wiki.gentoo.org/wiki/Hardened/GNU_stack_quickstart
+It's possible to patch the .s file to remove this line or to remove or
+rename the section .note.GNU-stack in the .o file. xtiny is doing the latter,
+renaming the section to .note.xty-stack .
 
 Alignment by ld
 """""""""""""""

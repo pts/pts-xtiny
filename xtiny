@@ -184,6 +184,50 @@ def remove_note_gnu_stack_from_elfo(filename):
   finally:
     f.close()  # Works even if fout == f.
 
+def sstrip_elf_executable(filename):
+  """Removes section headers and unnecessary functions fom an ELF executable.
+
+  It also changes ei_osabi to GNU/Linux.
+
+  Args:
+    filename: Input filename. The file ill be modified in place.
+  """
+  f = open(filename, 'rb+')
+  try:
+    ehdata = f.read(0x34)
+    if len(ehdata) != 0x34:
+      raise ValueError
+    # https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
+    if not ehdata.startswith('\x7fELF\1\1\1'):
+      raise ValueError('Not a 32-bit MSB-first ELF v1 file.')
+    (e_phoff, e_shoff, e_flags, e_ehsize, e_phentsize, e_phnum, e_shentsize,
+     e_shnum, e_shstrndx) = struct.unpack('<LLLHHHHHH', ehdata[0x1c : 0x34])
+    if e_phentsize != 0x20:
+      raise ValueError
+    if ehdata[0x10] != '\2':
+      raise ValueError('Expected an executable file.')
+    if e_phnum >> 7:  # Typically there is 1 or 2 in statically linked exec.
+      raise ValueError('Too many program header entries.')
+    f.seek(e_phoff)
+    phdata = f.read(0x20 * e_phnum)
+    if len(phdata) != 0x20 * e_phnum:
+      raise ValueError
+    truncate_ofs = max(0x34, e_phoff + 0x20 * e_phnum)
+    for pho in xrange(0, 0x20 * e_phnum, 0x20):
+      (p_type, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz, p_flags,
+       p_align) = struct.unpack('<8L', phdata[pho : pho + 0x20])
+      truncate_ofs = max(truncate_ofs, p_offset + p_filesz)
+    f.seek(7)
+    f.write('\3')  # ei_osabi = GNU/Linux.
+    f.seek(0x20)
+    f.write('\0\0\0\0')  # e_shoff = 0.
+    f.seek(0x30)
+    f.write('\0\0\0\0')  # e_shnum = e_shstrndx = 0.
+    # TODO(pts): Remove trailing \0 from EOF.
+    f.truncate(truncate_ofs)
+  finally:
+    f.close()  # Works even if fout == f.
+
 
 def maybe_remove_files(filenames):
   for filename in filenames:
@@ -204,6 +248,8 @@ def wrap_linker(argv, prgdir):
   has_entry = False
   m_arg = None
   used_object_files = set()
+  output_file = 'a.out'
+  do_debug = True
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
@@ -258,6 +304,13 @@ def wrap_linker(argv, prgdir):
       cmd.extend((arg, argv[argi]))
       m_arg = argv[argi]
       argi += 1
+    elif arg == '-o' and argi < len(argv):
+      cmd.extend((arg, argv[argi]))
+      output_file = argv[argi]
+      argi += 1
+    elif arg == '-s':
+      do_debug = False
+      cmd.append(arg)
     else:
       cmd.append(arg)
   assert cmd[0] is not None, 'missing --xtiny-run-ld flag'
@@ -309,10 +362,21 @@ def wrap_linker(argv, prgdir):
     relink_cmd.extend(('-o', output_file, ro_output_file))
     relink_cmd.extend(('-T', linker_script))
     to_remove_after_link = [ro_output_file]
+  do_sstrip = not has_custom_linker_script and not do_debug
   try:
-    run_command(cmd, 'linker', is_verbose, do_exec=not relink_cmd)
-    # Use do_exec=False so we can clean up files (os.remove) below.
-    run_command(relink_cmd, 'relink-linker', is_verbose, do_exec=False)
+    run_command(cmd, 'linker', is_verbose,
+                do_exec=not relink_cmd and not do_sstrip)
+    if do_sstrip:
+      is_ok = False
+      try:
+        sstrip_elf_executable(output_file)
+        is_ok = True
+      finally:
+        if not is_ok:
+          maybe_remove_files((output_file,))
+    if relink_cmd:
+      # Use do_exec=False so we can clean up files (os.remove) below.
+      run_command(relink_cmd, 'relink-linker', is_verbose, do_exec=False)
   finally:
     maybe_remove_files(to_remove_after_link)
 
