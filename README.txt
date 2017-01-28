@@ -256,9 +256,9 @@ pages).
 
 Q24. Can the output of xtiny be further compressed?
 """""""""""""""""""""""""""""""""""""""""""""""""""
-Probably for large executables (>10 kB) upx (http://upx.github.io/) is able to
-reduce the file size even further. Give it a try. But for small executables
-(<6 kB), there is probably no improvement.
+upx (http://upx.github.io/) works on the output executables of xtiny, but
+you need a large executable (typically >10 kB, probably won'y work for <5 kB)
+to see a size improvement. See examples/compressible.c for an example.
 
 Q25. How to get compiler warnings for xtiny.h?
 """"""""""""""""""""""""""""""""""""""""""""""

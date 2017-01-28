@@ -216,6 +216,18 @@ def sstrip_elf_executable(filename):
     for pho in xrange(0, 0x20 * e_phnum, 0x20):
       (p_type, p_offset, p_vaddr, p_paddr, p_filesz, p_memsz, p_flags,
        p_align) = struct.unpack('<8L', phdata[pho : pho + 0x20])
+      if p_type == 1 and 0 < p_offset < 0x1000:  # p_type == PT_LOAD.
+        # Prevent upx CantPackException: Go-language PT_LOAD.
+        # Prevent invalid Phdr p_offset; (without upx --force-exece).
+        p_vaddr -= p_offset
+        p_paddr -= p_offset
+        p_filesz += p_offset
+        p_memsz += p_offset
+        p_offset = 0
+        newphdata = struct.pack('<8L', p_type, p_offset, p_vaddr, p_paddr,
+                                p_filesz, p_memsz, p_flags, p_align)
+        f.seek(e_phoff + pho)
+        f.write(newphdata)
       truncate_ofs = max(truncate_ofs, p_offset + p_filesz)
     f.seek(7)
     f.write('\3')  # ei_osabi = GNU/Linux.
