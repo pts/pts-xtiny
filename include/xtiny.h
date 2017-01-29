@@ -595,7 +595,7 @@ __syscall_return(type,__res); \
 }
 
 #define _syscall1_noreturn_nomemory(name,type1,arg1) \
-static __inline__ void __attribute__((noreturn)) name(type1 __##arg1) { \
+static __inline__ void __attribute__((noreturn, nothrow)) name(type1 __##arg1) { \
 long __res; \
 __asm__ __volatile__ ("int $0x80" \
   : "=a" (__res) \
@@ -739,6 +739,7 @@ static __inline__ int setgroups(int __s, const gid_t *__l) {
   return sys_setgroups32(__s, __l);
 }
 
+/* TODO(pts): Which functions should we add __attribute__leaf to? */
 #ifdef __clang__
 #define __attribute__leaf  /* Not defined in clang-3.4. */
 #else
@@ -820,14 +821,15 @@ extern int strncmp(__const char *__s1, __const char *__s2, size_t __n) __attribu
 extern char *strncpy(char *__restrict __dest, __const char *__restrict __src, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
 extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
 
-static __inline__ int puts(const char *s) {
-  int i, remaining = strlen(s);
-  while (remaining > 0 && (i = write(1, s, remaining)) >= 0) {
-    s += i;
-    remaining -= i;
+/* Using __... variable names to avoid being affected by #define()s. */
+static __inline__ int puts(const char *__s) {
+  int __i, __remaining = strlen(__s);
+  while (__remaining > 0 && (__i = write(1, __s, __remaining)) >= 0) {
+    __s += __i;
+    __remaining -= __i;
   }
-  while (i >= 0 && (i = write(1, "\n", 1)) == 0) {}
-  return i;
+  while (__i >= 0 && (__i = write(1, "\n", 1)) == 0) {}
+  return __i;
 }
 
 #endif  /* _XTINY_H */
