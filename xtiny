@@ -262,6 +262,7 @@ def wrap_linker(argv, prgdir):
   used_object_files = set()
   output_file = 'a.out'
   do_debug = True
+  do_sstrip = True
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
@@ -275,6 +276,8 @@ def wrap_linker(argv, prgdir):
       del argv[:argi + 1]
       argi = None
       break
+    elif arg == '--xtiny-ld-noss':
+      do_sstrip = False
     elif arg == '--xtiny-ld-v':
       is_verbose = True
     elif arg == '--xtiny-ld-uof':
@@ -374,7 +377,7 @@ def wrap_linker(argv, prgdir):
     relink_cmd.extend(('-o', output_file, ro_output_file))
     relink_cmd.extend(('-T', linker_script))
     to_remove_after_link = [ro_output_file]
-  do_sstrip = not has_custom_linker_script and not do_debug
+  do_sstrip = do_sstrip and not has_custom_linker_script and not do_debug
   try:
     run_command(cmd, 'linker', is_verbose,
                 do_exec=not relink_cmd and not do_sstrip)
@@ -431,6 +434,7 @@ def main(argv):
   used_object_files = []
   is_writing_object_files = False
   output_file = None
+  do_xtiny_sstrip = True
 
   argi = 2  # Skip xtiny (argv[0]) and the compiler.
   while argi < len(argv):
@@ -501,6 +505,12 @@ def main(argv):
       continue
     elif arg == '-mno-xtiny-linker-script':  # Specify only if debugging xtiny.
       do_xtiny_linker_script = False
+      continue
+    elif arg == '-mxtiny-sstrip':  # Specify only if debugging xtiny.
+      do_xtiny_sstrip = True
+      continue
+    elif arg == '-mno-xtiny-sstrip':  # Specify only if debugging xtiny.
+      do_xtiny_sstrip = False
       continue
     elif arg == '-mxtiny-gcs':
       do_xtiny_gc_sections = True
@@ -631,6 +641,8 @@ def main(argv):
       assert ',' not in ld_prog_path, ld_prog_path
       if is_verbose:
         cmd.append('-Wl,--xtiny-ld-v')
+      if not do_xtiny_sstrip:
+        cmd.append('-Wl,--xtiny-ld-noss')
       if used_object_files:
         if [1 for fn in used_object_files if ',' in fn]:
           sys.stderr.write('fatal: comma specified in .o filename')
