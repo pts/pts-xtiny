@@ -707,7 +707,6 @@ __asm__ __volatile__ ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80
 __syscall_return(type,__res); \
 }
 
-/* extern int errno; */
 extern char **environ __asm__("__xtiny_environ");
 
 _syscall1_nomemory(int,close,int,fd)
