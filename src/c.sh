@@ -1,9 +1,11 @@
 #! /bin/bash --
 # by pts@fazekas.hu at Sun Jan 29 19:54:21 CET 2017
+# It's important that _start.s is immediately followed by __xtiny_exit.s.
 FILES_S_IN_ORDER='
     start/__xtiny_environ.s
     start/__xtiny_errno.s
     start/_start.s
+    start/__xtiny_exit.s
     string/memccpy.s
     string/memchr.s
     string/memcmp.s

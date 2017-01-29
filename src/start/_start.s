@@ -1,7 +1,6 @@
 /* by pts@fazekas.hu at Mon Oct 20 00:31:44 CEST 2014 */
 /*.arch i386*/
-.file "_start.s"
-.text
+.section .text.__xtiny_startexit
 .globl _start
 .type _start, @function
 _start:
@@ -39,12 +38,8 @@ _start:
 /* ^^^ 0000001F  53                push ebx */
 call main
 /* ^^^ 00000020  E8????????        call main */
-.byte 0x93
-/* ^^^ 00000025  93                xchg eax,ebx */
-.byte 0x31, 0xC0
-/* ^^^ 00000026  31C0              xor eax,eax */
-.byte 0x40
-/* ^^^ 00000028  40                inc eax */
-.byte 0xCD, 0x80
-/* ^^^ 00000029  CD80              int 0x80 */
+/* Now eax has the exit code. */
+/* Execution continues in __xtiny_exit.s. */
 .size _start, .-_start
+/* Make __xtiny_exit undefined here, pull __xtiny_exit.s. */
+.reloc 0, R_386_NONE, __xtiny_exit

@@ -569,6 +569,10 @@ def main(argv):
     # -fno-ident prevents generating the .comment section by preventing
     # this in the generated .s file: .ident  "GCC: ..."
     cmd.append('-fno-ident')
+    # Prevent `conflicting types for built-in function' error with
+    # `xtiny gcc -Wsystem-headers -W -Wall -Werror'.
+    cmd.extend(('-fno-builtin-exit', '-fno-builtin-_exit',
+                '-fno-builtin-_Exit'))
     if not has_debug:  # CFI, .eh_frame .eh_frame_hdr
       # -fno-unwind-tables is the default, we just play it safe.
       cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',))

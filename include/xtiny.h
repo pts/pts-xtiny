@@ -714,6 +714,7 @@ _syscall1_nomemory(int,close,int,fd)
 _syscall3(int,open,const char *,pathname,int,flags,mode_t,mode)
 _syscall1(int,chdir,const char*,dir)
 _syscall1(int,chroot,const char*,dir)
+/* Don't call sys_exit, but call _exit, because _exit uses 1 byte less. */
 _syscall1_noreturn_nomemory(sys_exit,int,exitcode)
 _syscall3(int,execve,const char*,file,char**,argv,char**,envp)
 _syscall0_nomemory(uid_t,geteuid)
@@ -727,10 +728,13 @@ _syscall2(int,sys_setgroups32,int,s,const gid_t*,l)
 _syscall3(ssize_t,write,int,fd,const void *,buf,size_t,count)
 _syscall3(ssize_t,read,int,fd,void *,buf,size_t,count)
 
-static __inline__ void __attribute__((noreturn)) exit(int __exitcode) {
-  /* No atexit, no destructors, no stdout flush etc. */
-  sys_exit(__exitcode);
-}
+/* Runs destructors, but no atexit, no stdout flush, no thread sync. */
+extern void exit(int __exitcode) __asm__("__xtiny_exit_with_fini") __attribute__((noreturn, nothrow, regparm(1)));
+
+/* Runs destructors, but no atexit, no stdout flush, no thread sync. */
+extern void _exit(int __exitcode) __asm__("__xtiny_exit") __attribute__((noreturn, nothrow, regparm(1)));
+extern void _Exit(int __exitcode) __asm__("__xtiny_exit") __attribute__((noreturn, nothrow, regparm(1)));
+
 static __inline__ int setgroups(int __s, const gid_t *__l) {
   return sys_setgroups32(__s, __l);
 }
