@@ -1,3 +1,5 @@
 *~
 a.out
 examples/addrnd
+src/obj
+src/*/*.o
