@@ -6,9 +6,8 @@
  * * Usage: gcc -m32 -Os -nostdlib -W,-T,tiny.scr src*.c
  * * C++ not supported (because of constructor etc. sections)
  * * You need to define your own _start function (not a _main).
- * * Code execution will be much faster if you replace the 1 in the ALIGN(1)
- *   and SUBALIGN(1) calls below with 4. But it may add a couple of \0 bytes
- *   to the output file.
+ * * No need for ALIGN(4) on .data, .rodata, .bss etc., because indivitual .o
+ *   files already specify alignment for the variables they define.
  */
 
 OUTPUT_FORMAT(binary)
@@ -18,9 +17,9 @@ ENTRY(_start)  /* Without this _start won't be loaded from an .a file. */
 SECTIONS {
   __myorg = 0x08048000;  /* Moves only relocation offsets. */
   . = __myorg;
-  .text . : ALIGN(1) SUBALIGN(1) {
-    /* ABSOLUTE(.) is necessary instead of . inside a section for ld. */
-    __ehdr = ABSOLUTE(.); /* __ehdr: ; Elf32_Ehdr */
+  /* ABSOLUTE(.) is necessary instead of . inside a section for ld. */
+  __ehdr = ABSOLUTE(.); /* __ehdr: ; Elf32_Ehdr */
+  . : {
     BYTE(0x7F) BYTE(69) BYTE(76) BYTE(70) BYTE(1) BYTE(1) BYTE(1)
     /* ^^^    db      0x7F, "ELF", 1, 1, 1            ;   0 e_ident */
     BYTE(3) /* 0=SYSV 3=GNU/Linux */
@@ -53,11 +52,10 @@ SECTIONS {
     LONG(4)
     /* ^^^    dd      4                               ;   p_align, same as ld -N */
     __phdrsize = ABSOLUTE(.) - __phdr; /* __phdrsize equ $ - __phdr */
-    PROVIDE(__executable_start = ABSOLUTE(.));
     /* _start is defined in _start.o (compiled from _start.s) in lib__xtiny.a */
-    /* No need to specify here: . = ALIGN(4), because SUBALIGN(4) above for
-     * .text.startup and .text takes care of this here.
-     */
+  }
+  PROVIDE(__executable_start = ABSOLUTE(.));
+  .text : {
     *(.text)  /* Contains all other functions. */
     *(.text.unlikely .text.*_unlikely)
     *(.text.exit .text.exit.*)
@@ -65,10 +63,36 @@ SECTIONS {
     *(.text.hot .text.hot.*)
     *(.text .stub .text.* .gnu.linkonce.t.*)
     *(.text.*)  /* text.startup contains main(). */
-  } = 0x90909090
+  }
   PROVIDE(__etext = ABSOLUTE(.));
   PROVIDE(_etext = ABSOLUTE(.));
   PROVIDE(etext = ABSOLUTE(.));
+  /* Thread Local Storage sections supported but not useful yet.
+   * We don't print an error, because it's hard to create these accidentally.
+   */
+  .tdata : /* ALIGN(4) SUBALIGN(4) */ {
+    *(.tdata .tdata.* .gnu.linkonce.td.*)
+  }
+  .tbss : /* ALIGN(4) SUBALIGN(4) */ {
+    *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon)
+  }
+  /* We align .data, .rodata and .bss to 4-byte boundary for faster loads on
+   * the data bus.
+   */
+  .rodata : /* ALIGN(4) SUBALIGN(4) */ {
+    *(.rodata .rodata.* .gnu.linkonce.r.*)
+  }
+  .rodata1 : /* ALIGN(4) SUBALIGN(4) */ {
+    /* Never seen it, but mentioned in default.scr. */
+    *(.rodata1)
+  }
+  .data : /* ALIGN(4) SUBALIGN(4) */ {
+    *(.data .data.* .gnu.linkonce.d.*)  /* Example: int a = 1; */
+  }
+  .data1 : /* ALIGN(4) SUBALIGN(4) */ {
+    /* Never seen it, but mentioned in https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/specialsections.html */
+    *(.data1)
+  }
   .ctors : ALIGN(4) SUBALIGN(4) {
     *(.ctors)
     /* This doesn't trigger if there are no .ctors in the input. */
@@ -98,33 +122,6 @@ SECTIONS {
     *(.fini_array)
     ASSERT(0, "Old-style destructors (.fini_array) are not supported.");
   }
-  /* Thread Local Storage sections supported but not useful yet.
-   * We don't print an error, because it's hard to create these accidentally.
-   */
-  .tdata : ALIGN(4) SUBALIGN(4) {
-    *(.tdata .tdata.* .gnu.linkonce.td.*)
-  }
-  .tbss : ALIGN(4) SUBALIGN(4) {
-    *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon)
-  }
-  /* TODO(pts): Add other sections (e.g. initializers) as well? */
-  /* We align .data, .rodata and .bss to 4-byte boundary for faster loads on
-   * the data bus.
-   */
-  .rodata : ALIGN(4) SUBALIGN(4) {
-    *(.rodata .rodata.* .gnu.linkonce.r.*)
-  }
-  .rodata1 : ALIGN(4) SUBALIGN(4) {
-    /* Never seen it, but mentioned in default.scr. */
-    *(.rodata1)
-  }
-  .data : ALIGN(4) SUBALIGN(4) {
-    *(.data .data.* .gnu.linkonce.d.*)  /* Example: int a = 1; */
-  }
-  .data1 : ALIGN(4) SUBALIGN(4) {
-    /* Never seen it, but mentioned in https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/specialsections.html */
-    *(.data1)
-  }
   __p_filesz = .;
   PROVIDE(edata = ABSOLUTE(.));
   PROVIDE(_edata = ABSOLUTE(.));
@@ -133,7 +130,7 @@ SECTIONS {
   /* For some reason the contents of this secion will be omitted from the
    * file. Probably because do real data bytes are added here.
    */
-  .bss : ALIGN(4) SUBALIGN(4) {
+  .bss : /* ALIGN(4) SUBALIGN(4) */ {
     /* errno is defined in __xtiny_errno.o in lib__xtiny.a. We could define it
      * here: `__xtiny_errno = ABSOLUTE(.); . += 4;', but that would make the
      * symbol unavailable when linking with gcc. Similarly for environ.
@@ -143,7 +140,7 @@ SECTIONS {
     *(COMMON)  /* Example: int a; */
   }
   _end = .; PROVIDE (end = .);
-  /DISCARD/ : ALIGN(1) SUBALIGN(1) {
+  /DISCARD/ : /* ALIGN(1) SUBALIGN(1) */ {
     *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*)
     *(.note.gnu.gold-version)  /* Not in .o files, just to be sure. */
     *(.note.gnu.build-id)  /* Not in .o files, just to be sure. */
@@ -161,7 +158,7 @@ SECTIONS {
   /* Without this block ld will append all such sections to the target
    * executable. We don't know how to handle them, so let's not append them.
    */
-  .unsupported : ALIGN(1) SUBALIGN(1) {
+  .unsupported : /* ALIGN(1) SUBALIGN(1) */ {
     *(*)
     ASSERT(0, "Found non-empty unsupported section in ELF inputs.");
   }
