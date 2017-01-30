@@ -187,11 +187,15 @@ Fortunately, `xtiny gcc' already generates a small enough output by default,
 containing only the necessary sections, so stripping wouldn't make it any
 smaller.
 
-Q16. Can I write multithreaded programs?
-""""""""""""""""""""""""""""""""""""""""
-Not easily and not out-of-the-box. First you have to fix errno, which is now
-a global variable, and you should make it thread-local instead. Then you
-have to write a threading library (possibly based on clone(2)).
+Q16. Can I write multithreaded programs with pts-xtiny?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""
+pts-xtiny can't help you if you need to write multithreaded programs.
+
+These have to be changed:
+
+* Fix errno, which is now a global variable, and make it thread-local instead.
+* Write a threading library (possibly based on clone(2)).
+* Fix malloc and other library functions which don't do any locking.
 
 Q17. Can I use third-party libraries?
 """""""""""""""""""""""""""""""""""""
@@ -430,6 +434,11 @@ About symbol lookup order in .o and .a files
   ar t foobar2.a
   ar t bar2foo.a
 
+About malloc
+""""""""""""
+The malloc implementation in pts-xtiny is based on musl-1.1.16/src/malloc,
+but in pts-xtiny it's single-threaded.
+
 How to print the active linker script
 """""""""""""""""""""""""""""""""""""
 ld --verbose
@@ -468,5 +477,7 @@ TODOs
 * TODO: Why is `xtiny gcc -g' ... `sstrip' output so large?
 * TODO: Avoid the padding of _start.s with 0x90 etc. for __xtiny_environ
   (which is aligned to 4 bytes with 0x66, 0x90 for -mno-xtiny-linker-script).
+* TODO: copy some gcc flags from musl: gcc -m32 -std=c99 -nostdinc -ffreestanding -fexcess-precision=standard -frounding-math -D_XOPEN_SOURCE=700 -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections -march=i486 -mtune=generic -Werror=implicit-function-declaration -Werror=implicit-int -Werror=pointer-sign -Werror=pointer-arith
+* TODO: use malloc_lite (and calloc_lite) if no free
 
 __END__

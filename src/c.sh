@@ -34,6 +34,7 @@ set -ex
 cd "${0%/*}"
 test -f string/memset.s
 rm -rf obj obj__* lib__*.a */*.o
+rm -f include xtiny
 
 mkdir obj__xtiny
 cd obj__xtiny
@@ -62,6 +63,16 @@ for VV in {i,n}{f,n}; do
   ar crD ../lib__xtiny_start_"$VV".a "${@/%.*/.o}"
   cd ..
 done
+
+ln -s ../include
+cp ../xtiny ./xtiny
+cd malloc
+C_FILES='__xtiny_lite_malloc.c calloc.c'
+set -- $C_FILES
+rm -f *.o
+../xtiny gcc -s -O2 -W -Wall -Wextra -Werror -c "$@"
+ar crD ../lib__xtiny.a "${@/%.*/.o}"
+cd ..
 
 set +x 
 echo "Install with: cp -a src/lib__*.a ./"

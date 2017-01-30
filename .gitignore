@@ -4,3 +4,5 @@ examples/addrnd
 src/obj
 src/*/*.o
 src/lib__*.a
+src/include
+src/xtiny

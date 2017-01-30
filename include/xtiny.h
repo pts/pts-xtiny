@@ -192,6 +192,9 @@ typedef __volatile__ int pthread_spinlock_t;
 typedef unsigned short umode_t;
 typedef unsigned long sigset_t;
 
+#define SIZE_MAX 4294967295U  /* Maximum size_t. */
+#define PAGE_SIZE 4096
+
 /* Constants from asm/unistd_32.h */
 #define __NR_restart_syscall      0
 #define __NR_exit		  1
@@ -731,6 +734,8 @@ _syscall2_nomemory(int,kill,pid_t,pid,int,sig)
 _syscall2(int,sys_setgroups32,int,s,const gid_t*,l)
 _syscall3(ssize_t,write,int,fd,const void *,buf,size_t,count)
 _syscall3(ssize_t,read,int,fd,void *,buf,size_t,count)
+#define __NR_sys_brk __NR_brk  /* The glibc wrapper returns a different value. */
+_syscall1(void*,sys_brk,void*,addr)
 
 /* Runs destructors, but no atexit, no stdout flush, no thread sync. */
 extern void exit(int __exitcode) __asm__("__xtiny_exit_with_fini") __attribute__((noreturn, nothrow, regparm(1)));
@@ -832,6 +837,8 @@ extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__)) __
 extern int atexit(void (*function)(void)) __attribute__((regparm(1), nothrow));
 
 extern void abort() __attribute__((noreturn, nothrow));
+
+/* Like malloc, but sets bytes to 0 before returning. */
 
 /* --- puts
  *
