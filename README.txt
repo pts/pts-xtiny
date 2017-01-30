@@ -293,7 +293,7 @@ Known limitations of `-T xtiny.scr' enabled by -mxtiny-linker-script:
 
 In general, the output executables with or without -mxtiny-linker-script
 should have the same size but not exactly the same content (because sections
-are ordered differently by the linker). If you experience discrepancies
+are ordered differently by the linker). If you experience a discrepancy
 other than those below, please report an issue.
 
 Q28. Does pts-xtiny support __attribute__((constructor)) and
@@ -321,6 +321,16 @@ __attribute__((destructor)), and the generated code is also shorter, so use:
   static void mydtor(void) { ... }
   ...
   atexit(mydtor)
+
+Q30. Does pts-xtiny support linking with GNU gold?
+""""""""""""""""""""""""""""""""""""""""""""""""""
+Yes, just specify `xtiny ... -mxtiny-gold'.
+
+-mtiny-gcs (and -Wl,--gc-sections) works as expected with GNU gold.
+
+The output file should be of the same size with our without GNU gold, and it
+should be byte-by-byte identical. If you experience a discrepancy, please
+report an issue.
 
 Technical notes
 ~~~~~~~~~~~~~~~
@@ -456,10 +466,8 @@ TODOs
   socketcall, but no individual calls. What about constness etc.
   Maybe uclibc?
 * TODO: doc: What are the similar projects?
-* TODO: Why is `xtiny gcc -g' ... `strip' output so large?
+* TODO: Why is `xtiny gcc -g' ... `sstrip' output so large?
 * TODO: Avoid the padding of _start.s with 0x90 etc. for __xtiny_environ
   (which is aligned to 4 bytes with 0x66, 0x90 for -mno-xtiny-linker-script).
-* TODO: gold compatibility, -z norelro
-* TODO: does gold create a small file
 
 __END__

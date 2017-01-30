@@ -350,6 +350,7 @@ def wrap_linker(argv, prgdir):
   output_file = 'a.out'
   do_debug = True
   do_sstrip = True
+  do_gold = False
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
@@ -365,6 +366,8 @@ def wrap_linker(argv, prgdir):
       break
     elif arg == '--xtiny-ld-noss':
       do_sstrip = False
+    elif arg == '--xtiny-ld-gold':
+      do_gold = True
     elif arg == '--xtiny-ld-v':
       is_verbose = True
     elif arg == '--xtiny-ld-uof':
@@ -410,6 +413,12 @@ def wrap_linker(argv, prgdir):
       cmd.extend((arg, argv[argi]))
       output_file = argv[argi]
       argi += 1
+    elif arg == '-z' and argi < len(argv) and argv[argi] in ('relro', 'norelro'):
+      # GNU gold 1.11 in GNU Binutils 2.24 fails with `-z relro':
+      #   gold: internal error in set_offset, at ../../gold/output.cc:4728
+      # `-z relro' is not useful for us anyway (it should be a noop for static
+      # linking), so we just remove it.
+      argi += 1
     elif arg == '-s':
       do_debug = False
       cmd.append(arg)
@@ -417,6 +426,14 @@ def wrap_linker(argv, prgdir):
       cmd.append(arg)
   assert cmd[0] is not None, 'missing --xtiny-run-ld flag'
   assert '-L---' not in argv, '-L--- specified too late'
+  if do_gold:
+    items = cmd[0].split('/')
+    prog = items[-1]
+    if prog.endswith('.bin'):
+      items[-1] = 'gold.bin'
+    else:
+      items[-1] = 'gold'
+    cmd[0] = '/'.join(items)
   if '-T' in argv:
     has_custom_linker_script = True
   if used_object_files:
@@ -556,6 +573,7 @@ def main(argv):
   is_writing_object_files = False
   output_file = None
   do_xtiny_sstrip = True
+  do_xtiny_gold = False
 
   argi = 2  # Skip xtiny (argv[0]) and the compiler.
   while argi < len(argv):
@@ -635,6 +653,12 @@ def main(argv):
       continue
     elif arg == '-mno-xtiny-sstrip':  # Specify only if debugging xtiny.
       do_xtiny_sstrip = False
+      continue
+    elif arg == '-mxtiny-gold':  # Use the GNU gold linker.
+      do_xtiny_gold = True
+      continue
+    elif arg == '-mno-xtiny-gold':
+      do_xtiny_gold = False
       continue
     elif arg == '-mxtiny-gcs':
       do_xtiny_gc_sections = True
@@ -759,6 +783,8 @@ def main(argv):
         cmd.append('-Wl,--xtiny-ld-v')
       if not do_xtiny_sstrip:
         cmd.append('-Wl,--xtiny-ld-noss')
+      if do_xtiny_gold:
+        cmd.append('-Wl,--xtiny-ld-gold')
       if used_object_files:
         if [1 for fn in used_object_files if ',' in fn]:
           sys.stderr.write('fatal: comma specified in .o filename')
