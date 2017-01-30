@@ -13,6 +13,7 @@ START_FILES_S_IN_ORDER='
 FILES_S_IN_ORDER='
     misc/__xtiny_environ.s
     misc/__xtiny_errno.s
+    misc/abort.s
     misc/atexit.s
     string/memccpy.s
     string/memchr.s

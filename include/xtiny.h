@@ -190,6 +190,7 @@ typedef unsigned int pthread_key_t;
 typedef int pthread_once_t;
 typedef __volatile__ int pthread_spinlock_t;
 typedef unsigned short umode_t;
+typedef unsigned long sigset_t;
 
 /* Constants from asm/unistd_32.h */
 #define __NR_restart_syscall      0
@@ -720,9 +721,13 @@ _syscall0_nomemory(uid_t,geteuid)
 _syscall0_nomemory(uid_t,getegid)
 _syscall0_nomemory(gid_t,getuid)
 _syscall0_nomemory(gid_t,getgid)
+_syscall0_nomemory(pid_t,getpid)
+_syscall0_nomemory(pid_t,getppid)
+_syscall0_nomemory(pid_t,gettid)
 _syscall1_nomemory(mode_t,umask,mode_t,mask)
 _syscall2_nomemory(int,setreuid,uid_t,r,uid_t,e)
 _syscall2_nomemory(int,setregid,gid_t,r,gid_t,e)
+_syscall2_nomemory(int,kill,pid_t,pid,int,sig)
 _syscall2(int,sys_setgroups32,int,s,const gid_t*,l)
 _syscall3(ssize_t,write,int,fd,const void *,buf,size_t,count)
 _syscall3(ssize_t,read,int,fd,void *,buf,size_t,count)
@@ -826,6 +831,13 @@ extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__)) __
  */
 extern int atexit(void (*function)(void)) __attribute__((regparm(1), nothrow));
 
+extern void abort() __attribute__((noreturn, nothrow));
+
+/* --- puts
+ *
+ * TODO(pts): Move puts to an .s file.
+ */
+
 /* Using __... variable names to avoid being affected by #define()s. */
 static __inline__ int puts(const char *__s) {
   int __i, __remaining = strlen(__s);
@@ -836,5 +848,49 @@ static __inline__ int puts(const char *__s) {
   while (__i >= 0 && (__i = write(1, "\n", 1)) == 0) {}
   return __i;
 }
+
+/* --- Signal numbers */
+
+#define NSIG		32
+#define SIGHUP		 1
+#define SIGINT		 2
+#define SIGQUIT		 3
+#define SIGILL		 4
+#define SIGTRAP		 5
+#define SIGABRT		 6
+#define SIGIOT		 6
+#define SIGBUS		 7
+#define SIGFPE		 8
+#define SIGKILL		 9
+#define SIGUSR1		10
+#define SIGSEGV		11
+#define SIGUSR2		12
+#define SIGPIPE		13
+#define SIGALRM		14
+#define SIGTERM		15
+#define SIGSTKFLT	16
+#define SIGCHLD		17
+#define SIGCONT		18
+#define SIGSTOP		19
+#define SIGTSTP		20
+#define SIGTTIN		21
+#define SIGTTOU		22
+#define SIGURG		23
+#define SIGXCPU		24
+#define SIGXFSZ		25
+#define SIGVTALRM	26
+#define SIGPROF		27
+#define SIGWINCH	28
+#define SIGIO		29
+#define SIGPOLL		SIGIO
+/*#define SIGLOST		29*/
+#define SIGPWR		30
+#define SIGSYS		31
+#define	SIGUNUSED	31
+/* These should not be considered constants from userland.  */
+#define SIGRTMIN	32
+#define SIGRTMAX	_NSIG
+
+/* --- */
 
 #endif  /* _XTINY_H */
