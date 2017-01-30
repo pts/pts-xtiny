@@ -545,7 +545,9 @@ def main(argv):
   bdir = None
   do_xtiny_link = True
   do_xtiny_gc_sections = False
-  do_xtiny_linker_script = None
+  # The default is false (i.e. don't use `-T xtiny.scr'), see the known
+  # limitations in Q27 in README.txt.
+  do_xtiny_linker_script = False
   has_gc_sections = False
   # List of .o filenames being written by the current command.
   output_object_files = []
@@ -650,19 +652,7 @@ def main(argv):
       output_object_files.append(output_file)
   else:
     del output_object_files[:]
-  #assert 0, output_object_files
 
-  if do_xtiny_linker_script is None:
-    # We don't specify a custom linker script if debugging (i.e. -g) is
-    # enabled, because gdb doesn't understand our custom stripped ELF. In
-    # this case the normal ELF linker output (with `ld -static') will be
-    # created, linking against the xtiny libc.
-    #
-    # There is no search path for linker scripts, even a relative path would
-    # make ld look for only that name.
-    #
-    # `ld -T' must be specified after the actual .o and .a files.
-    do_xtiny_linker_script = not has_debug
   if (do_xtiny_linker_script and
       (do_xtiny_gc_sections or has_gc_sections) and
       not do_xtiny_link):
@@ -784,7 +774,11 @@ def main(argv):
     if do_xtiny_link:
       cmd.extend(('-L---',))
   if do_link and do_xtiny_linker_script:
-    # GNU ld expects -T after the .o and .a files, so we do it this late.
+    # There is no search path for linker scripts, even a relative path would
+    # make ld look for only that name.
+    #
+    # `ld -T' must be specified after the actual .o and .a files if the
+    # linker script contains TARGET(elf32-little) (not required anymore).
     cmd.extend(('-Wl,-T,%s/xtiny.scr' % progdir,))
   run_command(cmd, 'compiler', is_verbose, do_exec=not output_object_files)
 

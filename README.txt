@@ -8,8 +8,9 @@ Tutorial on Creating Really Teensy ELF Executables for Linux''
 (http://www.muppetlabs.com/~breadbox/software/tiny/teensy.html). pts-xtiny
 achieves almost the same, tiny file size as indicated there, but without the
 programmer having to write any assembly code. The ELF file generation is
-done using a GNU ld linker script or some custom flag to ld and
-post-processing the output files.
+done using a GNU ld command-line flags and truncation of the generated
+executable (similarly to sstrip). pts-xtiny has a linker script, but it's
+not used by default.
 
 FAQ
 ~~~
@@ -36,13 +37,13 @@ file size, the `xtiny' wrapper will add it for you. Unless you specify another
 `-O...' flag, the wrapper also adds some other relevant gcc flags to make
 the output file even smaller.
 
-Q1B. I have a large program. How much can xtiny reduce the executable size?
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Q1B. I have a large program. How much can pts-xtiny reduce the executable size?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 The maximum reduction from `gcc -m32' to `xtiny gcc' is about 5400 bytes.
 The maximum reduction from `xstatic gcc' to `xtiny gcc' is about 4100 bytes.
 These numbers are based on compiling examples/hellowr.c with gcc-4.8.4.
 
-So if your original executable is larger than 100 kB, then xtiny probably
+So if your original executable is larger than 100 kB, then pts-xtiny probably
 won't make a big difference.
 
 You may want to try reduce your library dependencies, refactor your code,
@@ -65,23 +66,24 @@ Q3. Which architectures are supported?
 i386 (x86, 32-bit) only. The generated binaries will run on amd64 (x86_64)
 Linux systems as well.
 
-There is no need to specify the `-m32' flag for gcc, xtiny specifies it by
+There is no need to specify the `-m32' flag for gcc, `xtiny' specifies it by
 default.
 
 Q4. Which operating systems are supported?
 """"""""""""""""""""""""""""""""""""""""""
 Linux only, and also FreeBSD in Linux emulation mode.
 
-xtiny is not able to produce .exe files (for Windows) or macOS executables.
+pts-xtiny is not able to produce .exe files (for Windows) or macOS
+executables.
 
 Q5. Do the executables link against glibc, eglibc, uClibc, dietlibc?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-No, they link statically against the xtiny libc only, which is included in
-the pts-xtiny distribution. At runtime no external files are necessary to
+No, they link statically against the pts-xtiny libc only, which is included
+in the pts-xtiny distribution. At runtime no external files are necessary to
 run the executables.
 
-Q6. The xtiny libc is very small, will you add function X?
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Q6. The pts-xtiny libc is very small, will you add function X?
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 If X is a Linux system call, please send me a patch, and I'll add it.
 Otherwise let's discuss first to avoid the extra work.
 
@@ -93,14 +95,14 @@ Currently C and i386 assembly (as accepted by the GNU assembler) are
 supported.
 
 C++ may get added in the future, but there will be no exception handling, no
-STL, and libstdc++ will not be available. For C++ xtiny is missing malloc
-(for `operator new') and C++-style constructors and destructors
+STL, and libstdc++ will not be available. For C++ pts-xtiny is missing
+malloc (for `operator new') and C++-style constructors and destructors
 (__dso_handle and __cxa_atexit).
 
 Q8. Can I use existing, precompiled libraries?
 """"""""""""""""""""""""""""""""""""""""""""""
 Most probably they won't work, because most of them need lots of functions
-from the libc (which the xtiny libc doesn't have), and when they were
+from the libc (which the pts-xtiny libc doesn't have), and when they were
 compiled, their .h files made some assumptions about the inner data
 structers of that other libc, and these assumptions are most probobaly not
 true for pts-xtiny. So even if it compiles, it will probably segfault.
@@ -127,9 +129,8 @@ Q11. What are the dependencies to run pts-xtiny?
 """"""""""""""""""""""""""""""""""""""""""""""""
 * a Linux i386 or amd64 system
 * gcc >=4.4 that can compile for the i386 target
-* the GNU linker: the ld tool GNU Binutils (other linkers such as gold
-  without linker script (`ld -T') support won't work, specify
-  `xtiny ... -mno-xtiny-linker-script' to use them)
+* the GNU linker: the ld tool in GNU Binutils
+  or the GNU gold linker: the gold tool in GNU Binutils
 * Python >=2.4 (This may get removed in the future when the `xtiny' wrapper
   script gets rewritten in C.)
 
@@ -140,14 +141,14 @@ culprit is that only a very small fraction of the libc is implemented.
 
 Q13. Does profiling work?
 """""""""""""""""""""""""
-No, `gcc -pg' etc. don't work, because the xtiny libc lacks the
+No, `gcc -pg' etc. don't work, because the pts-xtiny libc lacks the
 instrumentation for profile stack trace collection.
 
 Q14. Does debugging work?
 """""""""""""""""""""""""
 Yes, if you specify the gcc -g flag for both compiling and linking. Of
 course, the generated binary will be much larger because of the extra debug
-info (and the linker script is not used either):
+info.
 
 Without debugging:
 
@@ -178,7 +179,7 @@ they will become larger (252 bytes instead of 200 bytes in the example):
 Q15. Can I use the `strip' command to strip unneeded symbols?
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 No, `strip' and most other ELF tools don't understand the non-debugging
-output of xtiny, because the section table is missing.
+output of pts-xtiny, because the section table is missing.
 
 You can use `sstrip' though, but it's unnecessary.
 
@@ -217,19 +218,17 @@ http://ptspts.blogspot.com/2009/11/tiny-self-contained-c-compiler-using.html
 
 Q19. I need a libc with many more features. How do I benefit from pts-xtiny?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+You can copy some of the command-line flags `xtiny' passes to gcc and ld.
+
 You can use the linker script xtiny.scr from pts-xtiny. Just append
 `-Wl,-T,.../xtiny.scr' to your `gcc' command-line using another libc (such
 as dietlibc or uClibc), and benefit from some extra stripping of unneeded
 symbols.
 
-If your code contains constructors or destructors (i.e. code which runs
-before main or after exit(2)), xtiny.scr may not work for you though, and
-you'll get a linker error.
-
 Q20. Are executables created with pts-xtiny very fast?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
 Not particularly, because they are optimized for size (`gcc -Os') instead of
-speed, and functions in the xtiny libc are also optimized for size (e.g.
+speed, and functions in the pts-xtiny libc are also optimized for size (e.g.
 memset is just a `rep stosb', quite slow compared to SIMD approaches (e.g.
 MMX, SSE) on some CPUs).
 
@@ -242,49 +241,62 @@ Q21. Is there a non-trivial example program using pts-xtiny?
 See examples/addrnd.c, which implements a Lagged Fibonacci generator,
 writing random bytes to its stdout.
 
-Q22. Does xtiny support -Wl,--gc-sections?
-""""""""""""""""""""""""""""""""""""""""""
+Q22. Does pts-xtiny support -Wl,--gc-sections?
+""""""""""""""""""""""""""""""""""""""""""""""
 Yes, and you can use -mxtiny-gcs as a shorthand for
 `-ffunction-sections -fdata-sections -Wl,--gc-sections'.
 
 These flags together make sure than unused global variables and functions
 are removed from the output executable, further saving file size.
 
-Q23. Are executables produced by xtiny as secure as default binaries by gcc?
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-No, executables produced by xtiny are less secure, because xtiny specified
-`gcc -fno-stack-protector' and it has rwx pages (including executable stack
-pages).
+Q23. Are executables produced by pts-xtiny as secure as default binaries by
+gcc?
+""""
+No, executables produced by pts-xtiny are less secure, because pts-xtiny
+specified `gcc -fno-stack-protector' and it has rwx pages (including
+executable stack pages).
 
-Q24. Can the output of xtiny be further compressed?
-"""""""""""""""""""""""""""""""""""""""""""""""""""
-upx (http://upx.github.io/) works on the output executables of xtiny, but
+Q24. Can the output of pts-xtiny be further compressed?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""
+upx (http://upx.github.io/) works on the output executables of pts-xtiny, but
 you need a large executable (typically >10 kB, probably won'y work for <5 kB)
 to see a size improvement. See examples/compressible.c for an example.
 
-Q25. How to get compiler warnings for xtiny.h?
-""""""""""""""""""""""""""""""""""""""""""""""
+Q25. How to get compiler warnings for <xtiny.h>?
+""""""""""""""""""""""""""""""""""""""""""""""""
 Since xtiny.h is in an `-isystem' directory, to get warnings for it,
 compile it with: `-Werror -Wsystem-headers', in addition to the usual
 `-W -Wall -Wextra'.
 
-Q26. How can I check in a .c file if it's compiling with xtiny?
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Q26. How can I check in a .c file if it's compiling with pts-xtiny?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Use `#ifdef __XTINY__'. As usual, `#if __XTINY__' also works.
 
-Q27. Can xtiny work without a linker script (ld -T)?
-""""""""""""""""""""""""""""""""""""""""""""""""""""
-Yes, please give `xtiny ... -mno-xtiny-linker-script' a try. It should now
-produce executable files of identical size, but not identical content
-(because sections are ordered differently by the linker).
+Q27. Does pts-xtiny use a linker script (ld -T)?
+""""""""""""""""""""""""""""""""""""""""""""""""
+Not (anymore) by default. Enable it with `xtiny ... -mxtiny-linker-script'
+if you need it.
 
-Known inefficiencies:
+Known limitations of `-T xtiny.scr' enabled by -mxtiny-linker-script:
 
-* The size of the executable may be aligned (rounded up) to 4-byte boundary.
-  This happens only with -mno-xtiny-linker-script because __xtiny_environ
-  needs to be at 4-byte boundary. But why is the executable rounded up then?
+* xtiny.scr strips debug symbols, so don't use it with `xtiny gcc -g'.
+* xtiny.scr has OUTPUT_FORMAT(binary), which makes `ld' ignore
+  `--gc-sections'. There is a workaround for that in wrap_linker
+  (`ld -r'), but that removes .init_array when it shouldn't. This can be
+  surprising to the user, so we just disable it.
+* xtiny.scr doesn't produce smaller output than the alternative: `ld -N'
+  and sstrip_elf_executable. (xtiny.scr used to be better until the
+  alternative was improved in xtiny.)
+* GNU gold (the alternative linker to GNU ld) doesn't support linker
+  scripts (-T), and GNU gold may be used in some clang configurations (e.g.
+  pts-clang) by default.
 
-Q28. Does xtiny support __attribute__((constructor)) and
+In general, the output executables with or without -mxtiny-linker-script
+should have the same size but not exactly the same content (because sections
+are ordered differently by the linker). If you experience discrepancies
+other than those below, please report an issue.
+
+Q28. Does pts-xtiny support __attribute__((constructor)) and
 __attribute__((destructor))?
 """"""""""""""""""""""""""""
 Yes. Even better: if these features are not used, they don't add overhead to
@@ -293,10 +305,10 @@ the executable. (May other libcs get this wrong, they add overhead.)
 (Please note that constructors and destructors are ignored with
 -mno-xtiny-link.)
 
-Q29. Does xtiny support atexit(3) or on_exit(3)?
-""""""""""""""""""""""""""""""""""""""""""""""""
-xtiny supports atexit(3) with only 1 function registered (ATEXIT_MAX == 1),
-and it doesn't support on_exit(3).
+Q29. Does pts-xtiny support atexit(3) or on_exit(3)?
+""""""""""""""""""""""""""""""""""""""""""""""""""""
+pts-xtiny supports atexit(3) with only 1 function registered (ATEXIT_MAX ==
+1), and it doesn't support on_exit(3).
 
 However, you can register multiple functions with
 __attribute__((destructor)), and the generated code is also shorter, so use:
@@ -321,11 +333,11 @@ Useful links
 
 Executable stack info
 """""""""""""""""""""
-gcc generates a `.section        .note.GNU-stack,"",@progbits'
-line, which generates a PT_GNU_STACK program header, which we don't need.
-It's possible to patch the .s file to remove this line or to remove or
-rename the section .note.GNU-stack in the .o file. xtiny is doing the latter,
-renaming the section to .note.xty-stack .
+gcc generates a `.section        .note.GNU-stack,"",@progbits' line, which
+generates a PT_GNU_STACK program header, which we don't need. It's possible
+to patch the .s file to remove this line or to remove or rename the section
+.note.GNU-stack in the .o file. pts-xtiny is doing the latter, renaming the
+section to .note.xty-stack .
 
 Alignment by ld
 """""""""""""""
@@ -413,9 +425,6 @@ TODOs
 * TODO: Add tiny nasm, as, yasm "Hello, World\n" programs.
 * TODO: Why are there 0s at the end of tgen? Can't we move them to bss?
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
-* TODO: Add a better sstrip (which removes STACK and merges LOAD) to xtiny,
-  and use it by default with -mno-xtiny-linker-script. Also make it emit the
-  correct system ID (for FreeBSD compatibility).
 * TODO: gold + sstrip works. gold --gc-sections -r workaround doesn't work.
 * TODO: Does upx work on larger files emitted by xstatic?
 * TODO: Add -lgcc for long long division etc.
@@ -450,5 +459,8 @@ TODOs
 * TODO: Why is `xtiny gcc -g' ... `strip' output so large?
 * TODO: Avoid the padding of _start.s with 0x90 etc. for __xtiny_environ
   (which is aligned to 4 bytes with 0x66, 0x90 for -mno-xtiny-linker-script).
+* TODO: gold compatibility, -z norelro
+* TODO: does gold create a small file
+* TODO: -mno-xtiny-link --> -mno-xtiny-wrap-linker
 
 __END__
