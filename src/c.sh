@@ -41,7 +41,9 @@ gcc -m32 -c "${@/#/..\/}"
 rm -f ../lib__xtiny.a
 set -- "${@#*/}"
 # Automatic ranlib.
-ar cr ../lib__xtiny.a "${@/%.*/.o}"
+# Don't include libgcc/withgot.exclude_obj/*.o, because
+# they reference the _GLOBAL_OFFSET_TABLE_.
+ar cr ../lib__xtiny.a "${@/%.*/.o}" ../libgcc/*.obj/*.o
 cd ..
 
 for VV in {i,n}{f,n}; do

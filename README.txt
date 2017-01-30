@@ -432,15 +432,10 @@ ld --verbose
 
 TODOs
 ~~~~~
-* TODO: Add tiny nasm, as, yasm "Hello, World\n" programs.
-* TODO: Why are there 0s at the end of tgen? Can't we move them to bss?
+* TODO: Add tiny nasm (yasm), as "Hello, World\n" programs.
+* TODO: Why are there \0s at the end of tgen? Can't we move them to bss?
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
-* TODO: gold + sstrip works. gold --gc-sections -r workaround doesn't work.
-* TODO: Does upx work on larger files emitted by xstatic?
-* TODO: Add -lgcc for long long division etc.
 * TODO: Add lib directory for possible additional user libraries.
-* TODO: Auto-detect GNU gold and use the built-in linker if available.
-  Please note /usr/bin/ld vs /usr/bin/gold.
 * TODO: Enumerate sections:
   https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/specialsections.html
 * TODO: How to use CONSTRUCTORS etc. in the linker script?
