@@ -11,7 +11,11 @@
  */
 
 OUTPUT_FORMAT(binary)
-TARGET(elf32-little)
+TARGET(elf32-i386)  /* Input (.o) format. */
+/* If we specify TARGET(elf32-little) instead of TARGET(elf32-i386),
+ * and move -T earlier than the .o files in the cmdline, we'd get error:
+ * ld: ....o: Relocations in generic ELF (EM: 3)
+ */
 ENTRY(_start)  /* Without this _start won't be loaded from an .a file. */
 
 SECTIONS {
