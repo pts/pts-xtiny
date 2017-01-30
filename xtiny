@@ -543,7 +543,7 @@ def main(argv):
   is_compiling = False
   is_preproc = False
   bdir = None
-  do_xtiny_link = True
+  do_xtiny_wrap_linker = True
   do_xtiny_gc_sections = False
   # The default is false (i.e. don't use `-T xtiny.scr'), see the known
   # limitations in Q27 in README.txt.
@@ -611,15 +611,18 @@ def main(argv):
     elif arg == '-nostdinc':
       has_nostdinc = True
       continue
-    elif arg == '-mxtiny-link':  # Specify only if debugging xtiny.
-      # TODO(pts): How is this useful for debugging?
-      do_xtiny_link = True
+    elif arg == '-mxtiny-wrap-linker':  # Specify only if debugging xtiny.
+      do_xtiny_wrap_linker = True
       continue
-    elif arg == '-mno-xtiny-link':  # Specify only if debugging xtiny.
-      # With -mno-xtiny-link gcc stills work, but the linker command-line
-      # contains too many `-L' directories, so `-lm' would try to link
-      # against the system libm.a.
-      do_xtiny_link = False
+    elif arg == '-mno-xtiny-wrap-linker':  # Specify only if debugging xtiny.
+      # TODO(pts): How is this useful for debugging?
+      #
+      # With -mno-xtiny-wrap-linker gcc still works, but the linker
+      # command-line contains too many `-L' directories, so `-lm' would try
+      # to link against the system libm.a; also the output executable is not
+      # stripped (with strip_elf_executable), and constructors and
+      # destructors are not called.
+      do_xtiny_wrap_linker = False
       continue
     elif arg == '-mxtiny-linker-script':  # Specify only if debugging xtiny.
       do_xtiny_linker_script = True
@@ -655,8 +658,8 @@ def main(argv):
 
   if (do_xtiny_linker_script and
       (do_xtiny_gc_sections or has_gc_sections) and
-      not do_xtiny_link):
-    print >>sys.stderr, 'fatal: if you use -Wl,--gc-sections or -mxtiny-gcs, you need -mxtiny-link (default) or -mno-xtiny-linker-script'
+      not do_xtiny_wrap_linker):
+    print >>sys.stderr, 'fatal: if you use -Wl,--gc-sections or -mxtiny-gcs, you need -mxtiny-wrap-linker (default) or -mno-xtiny-linker-script'
     sys.exit(2)
   cmd = [compiler, '-m32']
   if is_compiling or is_preproc:
@@ -737,7 +740,7 @@ def main(argv):
     cmd.extend(('-static', '-nostdlib', '-Wl,--build-id=none', '-Wl,-N'))
     if do_xtiny_gc_sections:
       cmd.append('-Wl,--gc-sections')
-    if do_xtiny_link:
+    if do_xtiny_wrap_linker:
       ld_prog_path = get_bdir_prog_path(compiler, bdir, 'ld')
       if is_clang and ld_prog_path.endswith('/clangld32/ld'):
         # pts-clang. Append .bin to the compiler name, because the wrapper
@@ -771,7 +774,7 @@ def main(argv):
     # .a files must be between the .c .o files and the linker script (-T).
     cmd.append('%s/lib__xtiny_start_nn.a' % progdir)
     cmd.append('%s/lib__xtiny.a' % progdir)
-    if do_xtiny_link:
+    if do_xtiny_wrap_linker:
       cmd.extend(('-L---',))
   if do_link and do_xtiny_linker_script:
     # There is no search path for linker scripts, even a relative path would

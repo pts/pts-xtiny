@@ -461,6 +461,5 @@ TODOs
   (which is aligned to 4 bytes with 0x66, 0x90 for -mno-xtiny-linker-script).
 * TODO: gold compatibility, -z norelro
 * TODO: does gold create a small file
-* TODO: -mno-xtiny-link --> -mno-xtiny-wrap-linker
 
 __END__
