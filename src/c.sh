@@ -1,11 +1,19 @@
 #! /bin/bash --
 # by pts@fazekas.hu at Sun Jan 29 19:54:21 CET 2017
+#
+# If we ever need .c files: gcc -nostdlib -nostartfiles -nodefaultlibs
+#
+
 # It's important that _start.s is immediately followed by __xtiny_exit.s.
+START_FILES_S_IN_ORDER='
+    start/_start.S
+    start/__xtiny_exit.S
+'
+
 FILES_S_IN_ORDER='
-    start/__xtiny_environ.s
-    start/__xtiny_errno.s
-    start/_start.s
-    start/__xtiny_exit.s
+    misc/__xtiny_environ.s
+    misc/__xtiny_errno.s
+    misc/atexit.s
     string/memccpy.s
     string/memchr.s
     string/memcmp.s
@@ -21,19 +29,36 @@ FILES_S_IN_ORDER='
     string/strncpy.s
     string/strrchr.s
 '
-set -- $FILES_S_IN_ORDER
 set -ex
 cd "${0%/*}"
 test -f string/memset.s
-rm -rf obj
-mkdir obj
-cd obj
+rm -rf obj obj__* lib__*.a */*.o
+
+mkdir obj__xtiny
+cd obj__xtiny
+set -- $FILES_S_IN_ORDER
 gcc -m32 -c "${@/#/..\/}"
-rm -f lib__xtiny.a
+rm -f ../lib__xtiny.a
 set -- "${@#*/}"
 # Automatic ranlib.
-ar cr lib__xtiny.a "${@/%.*/.o}"
+ar cr ../lib__xtiny.a "${@/%.*/.o}"
 cd ..
+
+for VV in {i,n}{f,n}; do
+  DEFINES=
+  test "${VV:0:1}" = n || DEFINES="$DEFINES -DDO_INIT_ARRAY"
+  test "${VV:1:1}" = n || DEFINES="$DEFINES -DDO_FINI_ARRAY"
+  mkdir obj__xtiny_start_"$VV"
+  cd obj__xtiny_start_"$VV"
+  set -- $START_FILES_S_IN_ORDER
+  gcc -m32 -c $DEFINES "${@/#/..\/}"
+  rm -f ../lib__xtiny_start_"$VV".a
+  set -- "${@#*/}"
+  # Automatic ranlib.
+  ar cr ../lib__xtiny_start_"$VV".a "${@/%.*/.o}"
+  cd ..
+done
+
 set +x 
-echo "Install with: cp -a src/obj/lib__xtiny.a ./"
+echo "Install with: cp -a src/lib__*.a ./"
 : c.sh OK

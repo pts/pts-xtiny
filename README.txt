@@ -93,7 +93,9 @@ Currently C and i386 assembly (as accepted by the GNU assembler) are
 supported.
 
 C++ may get added in the future, but there will be no exception handling, no
-STL, and libstdc++ will not be available.
+STL, and libstdc++ will not be available. For C++ xtiny is missing malloc
+(for `operator new') and C++-style constructors and destructors
+(__dso_handle and __cxa_atexit).
 
 Q8. Can I use existing, precompiled libraries?
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -274,8 +276,39 @@ Q27. Can xtiny work without a linker script (ld -T)?
 """"""""""""""""""""""""""""""""""""""""""""""""""""
 Yes, please give `xtiny ... -mno-xtiny-linker-script' a try. It should now
 produce executable files of identical size, but not identical content
-(because sections are ordered differently by the linker). If it produces a
-larger executable file, please file a bug.
+(because sections are ordered differently by the linker).
+
+Known inefficiencies:
+
+* The size of the executable may be aligned (rounded up) to 4-byte boundary.
+  This happens only with -mno-xtiny-linker-script because __xtiny_environ
+  needs to be at 4-byte boundary. But why is the executable rounded up then?
+
+Q28. Does xtiny support __attribute__((constructor)) and
+__attribute__((destructor))?
+""""""""""""""""""""""""""""
+Yes. Even better: if these features are not used, they don't add overhead to
+the executable. (May other libcs get this wrong, they add overhead.)
+
+(Please note that constructors and destructors are ignored with
+-mno-xtiny-link.)
+
+Q29. Does xtiny support atexit(3) or on_exit(3)?
+""""""""""""""""""""""""""""""""""""""""""""""""
+xtiny supports atexit(3) with only 1 function registered (ATEXIT_MAX == 1),
+and it doesn't support on_exit(3).
+
+However, you can register multiple functions with
+__attribute__((destructor)), and the generated code is also shorter, so use:
+
+  __attribute__((destructor)) static void mydtor1(void) { ... }
+  __attribute__((destructor)) static void mydtor2(void) { ... }
+
+... instead of
+
+  static void mydtor(void) { ... }
+  ...
+  atexit(mydtor)
 
 Technical notes
 ~~~~~~~~~~~~~~~
@@ -360,6 +393,21 @@ Differences:
   * The STACK entry can probably be omitted (can it?).
   * The two LOAD entries are adjacent and can be merged to a single rwx page.
 
+About symbol lookup order in .o and .a files
+""""""""""""""""""""""""""""""""""""""""""""
+* See http://eli.thegreenplace.net/2013/07/09/library-order-in-static-linking
+* ar remembers the order the archive is created:
+  rm -f foobar2.a; ar cr foobar2.a foo.o bar2.o
+  rm -f bar2foo.a; ar cr bar2foo.a bar2.o foo.o
+  nm -s foobar2.a
+  nm -s bar2foo.a
+  ar t foobar2.a
+  ar t bar2foo.a
+
+How to print the active linker script
+"""""""""""""""""""""""""""""""""""""
+ld --verbose
+
 TODOs
 ~~~~~
 * TODO: Add tiny nasm, as, yasm "Hello, World\n" programs.
@@ -400,5 +448,7 @@ TODOs
   Maybe uclibc?
 * TODO: doc: What are the similar projects?
 * TODO: Why is `xtiny gcc -g' ... `strip' output so large?
+* TODO: Avoid the padding of _start.s with 0x90 etc. for __xtiny_environ
+  (which is aligned to 4 bytes with 0x66, 0x90 for -mno-xtiny-linker-script).
 
 __END__

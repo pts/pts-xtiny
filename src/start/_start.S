@@ -36,8 +36,24 @@ _start:
 /* ^^^ 0000001E  52                push edx */
 .byte 0x53
 /* ^^^ 0000001F  53                push ebx */
+
+#ifdef DO_INIT_ARRAY
+/* by pts@fazekas.hu at Sun Jan 29 10:16:14 CET 2017
+ * http://ptspts.blogspot.com/2014/01/how-to-run-custom-code-before-and-after.html
+ */
+/* This works only if .init_array is not empty. */
+mov $__init_array_start, %eax
+.Linitarycall:
+push %eax
+call *(%eax)
+pop %eax
+add $4, %eax  /* 3 bytes only. */
+cmp $__init_array_end, %eax
+jne .Linitarycall
+#endif
+
 call main
-/* ^^^ 00000020  E8????????        call main */
+/* ^^^ 000000??  E8????????        call main */
 /* Now eax has the exit code. */
 /* Execution continues in __xtiny_exit.s. */
 .size _start, .-_start

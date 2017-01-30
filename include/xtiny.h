@@ -820,6 +820,12 @@ extern int strncmp(__const char *__s1, __const char *__s2, size_t __n) __attribu
 extern char *strncpy(char *__restrict __dest, __const char *__restrict __src, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
 extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
 
+#define ATEXIT_MAX 1
+/* Only one hook registration, subsequent ones return -1 (error).
+ * The hook will get called befire __attribute__((destructor)) hooks.
+ */
+extern int atexit(void (*function)(void)) __attribute__((regparm(1), nothrow));
+
 /* Using __... variable names to avoid being affected by #define()s. */
 static __inline__ int puts(const char *__s) {
   int __i, __remaining = strlen(__s);
