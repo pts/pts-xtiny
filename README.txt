@@ -302,6 +302,10 @@ __attribute__((destructor))?
 Yes. Even better: if these features are not used, they don't add overhead to
 the executable. (May other libcs get this wrong, they add overhead.)
 
+ld in GNU Binutils 2.20.1 is buggy: it removes constructors and destructors
+even without --gc-sections. If this affects you,
+upgrade your GNU Binutils to 2.24 (which is known to work).
+
 (Please note that constructors and destructors are ignored with
 -mno-xtiny-link.)
 
