@@ -44,7 +44,8 @@ set -- "${@#*/}"
 # Automatic ranlib.
 # Don't include libgcc/withgot.exclude_obj/*.o, because
 # they reference the _GLOBAL_OFFSET_TABLE_.
-ar cr ../lib__xtiny.a "${@/%.*/.o}" ../libgcc/*.obj/*.o
+# D: for deterministic mode, don't include timestamps etc.
+ar crD ../lib__xtiny.a "${@/%.*/.o}" ../libgcc/*.obj/*.o
 cd ..
 
 for VV in {i,n}{f,n}; do
@@ -58,7 +59,7 @@ for VV in {i,n}{f,n}; do
   rm -f ../lib__xtiny_start_"$VV".a
   set -- "${@#*/}"
   # Automatic ranlib.
-  ar cr ../lib__xtiny_start_"$VV".a "${@/%.*/.o}"
+  ar crD ../lib__xtiny_start_"$VV".a "${@/%.*/.o}"
   cd ..
 done
 
