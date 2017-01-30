@@ -143,6 +143,7 @@ SECTIONS {
     *(.bss .bss.* .gnu.linkonce.b.*) /* Example: int a = 0; // 0 is special. */
     *(COMMON)  /* Example: int a; */
   }
+  . = ALIGN(32 / 8);  /* For compatibility with ld -N. */
   _end = .; PROVIDE (end = .);
   /DISCARD/ : /* ALIGN(1) SUBALIGN(1) */ {
     *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*)
