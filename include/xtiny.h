@@ -736,6 +736,15 @@ _syscall3(ssize_t,write,int,fd,const void *,buf,size_t,count)
 _syscall3(ssize_t,read,int,fd,void *,buf,size_t,count)
 #define __NR_sys_brk __NR_brk  /* The glibc wrapper returns a different value. */
 _syscall1(void*,sys_brk,void*,addr)
+_syscall2(int,chmod,const char*,path,mode_t,mode)
+_syscall2_nomemory(int,fchmod,int,fd,mode_t,mode)
+_syscall2(int,gettimeofday,struct timeval*,tv,struct timezone*,tz)
+_syscall3_nomemory(off_t,lseek,int,fd,off_t,offset,int,whence)
+_syscall2(int,lstat,const char*,path,struct stat*,buf)
+_syscall2(int,mkdir,const char*,pathname,mode_t,mode)
+_syscall2(int,symlink,const char*,oldpath,const char*,newpath)
+_syscall1(int,unlink,const char*,pathname)
+_syscall2(int,utimes,const char*,filename,const struct timeval*,times)
 
 /* Runs destructors, but no atexit, no stdout flush, no thread sync. */
 extern void exit(int __exitcode) __asm__("__xtiny_exit_with_fini") __attribute__((noreturn, nothrow, regparm(1)));
@@ -786,7 +795,7 @@ __XTINY_STATIC_ASSERT(SizeofUint64T, sizeof(uint64_t) == 8);
 #ifndef __cplusplus
 #define NULL ((void *)0)
 #else   /* C++ */
-#define NULL 0   
+#define NULL 0
 #endif  /* C++ */
 #endif  /* G++ */
 
@@ -897,6 +906,50 @@ static __inline__ int puts(const char *__s) {
 /* These should not be considered constants from userland.  */
 #define SIGRTMIN	32
 #define SIGRTMAX	_NSIG
+
+/* --- structs */
+
+struct stat {
+  dev_t st_dev;
+  unsigned short int __pad1;
+  ino_t st_ino;
+  mode_t st_mode;
+  nlink_t st_nlink;
+  uid_t st_uid;
+  gid_t st_gid;
+  dev_t st_rdev;
+  unsigned short int __pad2;
+  off_t st_size;
+  blksize_t st_blksize;
+  blkcnt_t st_blocks;
+  time_t st_atime;
+  unsigned long int st_atimensec;
+  time_t st_mtime;
+  unsigned long int st_mtimensec;
+  time_t st_ctime;
+  unsigned long int st_ctimensec;
+  unsigned long int __unused4;
+  unsigned long int __unused5;
+};
+
+struct utsname {
+  char sysname[65];
+  char nodename[65];
+  char release[65];
+  char version[65];
+  char machine[65];
+  char domainname[65];
+};
+
+struct timeval {
+  time_t tv_sec;
+  suseconds_t tv_usec;
+};
+
+struct timezone {
+  int tz_minuteswest;
+  int tz_dsttime;
+};
 
 /* --- */
 
