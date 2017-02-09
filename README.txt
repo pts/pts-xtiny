@@ -89,6 +89,8 @@ Otherwise let's discuss first to avoid the extra work.
 
 Your contributions are welcome and appreciated.
 
+See also Q31 for readily available alternatives such as pts-xstatic.
+
 Q7. Which programming languages are supported?
 """"""""""""""""""""""""""""""""""""""""""""""
 Currently C and i386 assembly (as accepted by the GNU assembler) are
@@ -243,7 +245,16 @@ library functions are not optimized for speed.
 Q21. Is there a non-trivial example program using pts-xtiny?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 See examples/addrnd.c, which implements a Lagged Fibonacci generator,
-writing random bytes to its stdout.
+writing random bytes to its stdout. Compiled executable size is 560 bytes.
+
+See https://github.com/pts/tiny-ssh-keygen-ed25519 , which implements
+ssh-keygen (SSH keypair generator) for ed25519 keys. Compiled executable
+size is 7568 bytes.
+
+See https://github.com/pts/pts-tiny-7z-sfx , which implements a .7z archive
+extractor and SFX. It doesn't use pts-xtiny directly, but features of
+pts-xtiny are inlined to its c-minidiet.sh and minidiet/* files. Compiled
+executable size is 16552 bytes.
 
 Q22. Does pts-xtiny support -Wl,--gc-sections?
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -339,6 +350,22 @@ Yes, just specify `xtiny ... -mxtiny-gold'.
 The output file should be of the same size with our without GNU gold, and it
 should be byte-by-byte identical. If you experience a discrepancy, please
 report an issue.
+
+Q31. I need many more libc functions. What should I do?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""
+If you need these functions urgently, pts-xtiny probably won't help you. You
+can use uClibc, dietlibc or musl as alternatives for Linux i386.
+
+For your convenience (easy installation and it works with any compiler
+already installed), I recommend you pts-xstatic
+(https://raw.githubusercontent.com/pts/pts-clang-xstatic/master/README.pts-xstatic.txt),
+which uses (and contains a copy of) uClibc. It also supports C++98, and
+contains a copy of libstdc++. To use it, install it, and then just replace
+`xtiny gcc' with `xstatic gcc', and hundrends of libc functions become
+available.
+
+Please note that other libcs (including pts-xstatic) have more overhead than
+pts-xtiny, so your executables will be a few kilobytes larger.
 
 Technical notes
 ~~~~~~~~~~~~~~~
