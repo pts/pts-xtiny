@@ -247,6 +247,10 @@ Q21. Is there a non-trivial example program using pts-xtiny?
 See examples/addrnd.c, which implements a Lagged Fibonacci generator,
 writing random bytes to its stdout. Compiled executable size is 560 bytes.
 
+See https://github.com/pts/pts-zcat/blob/master/compile_xtiny.sh , which
+implements a .gz, .zip and Flate decompression filter (stdin-to-stdout).
+Compiled executable size is 7368 bytes.
+
 See https://github.com/pts/tiny-ssh-keygen-ed25519 , which implements
 ssh-keygen (SSH keypair generator) for ed25519 keys. Compiled executable
 size is 7568 bytes.
