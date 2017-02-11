@@ -376,6 +376,15 @@ available.
 Please note that other libcs (including pts-xstatic) have more overhead than
 pts-xtiny, so your executables will be a few kilobytes larger.
 
+Q32. Can I define my own entry point (_start function)?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Yes, it works with or without `xtiny ... -nostartfiles', with 0 overhead.
+
+Q33. How do I get rid of the pts-xtiny libc in my executable?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Specify `xtiny ... -nodefaultlibs' or `xtiny ... -nostdlib', these GCC flags
+work as documented.
+
 Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
@@ -481,10 +490,10 @@ ld --verbose
 
 TODOs
 ~~~~~
-* TODO: Add tiny nasm (yasm), as "Hello, World\n" programs.
-* TODO: Why are there \0s at the end of tgen? Can't we move them to bss?
+* TODO: Add a separate (additional) .a file for __xtiny_exit_with_fini and __xtiny_exit, to make this work: xtiny gcc -W -Wall -Werror -s -Os -nostartfiles hellowr.c
+* TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
-* TODO: Add lib directory for possible additional user libraries.
+* TODO: Add lib directory for possible additional user libraries, add it by default as -L
 * TODO: Enumerate sections:
   https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/specialsections.html
 * TODO: How to use CONSTRUCTORS etc. in the linker script?
@@ -508,7 +517,7 @@ TODOs
   436 bytes?
 * TODO: Import syscalls from libsys (syscall-only libc, 1999). There is
   socketcall, but no individual calls. What about constness etc.
-  Maybe uclibc?
+  Maybe musl, dietlibc, uClibc?
 * TODO: doc: What are the similar projects?
 * TODO: Why is `xtiny gcc -g' ... `sstrip' output so large?
 * TODO: Avoid the padding of _start.s with 0x90 etc. for __xtiny_environ

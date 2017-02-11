@@ -351,6 +351,7 @@ def wrap_linker(argv, prgdir):
   do_debug = True
   do_sstrip = True
   do_gold = False
+  do_try_relink_start = True
   while argi < len(argv):
     arg = argv[argi]
     argi += 1
@@ -366,6 +367,8 @@ def wrap_linker(argv, prgdir):
       break
     elif arg == '--xtiny-ld-noss':
       do_sstrip = False
+    elif arg == '--xtiny-ld-notrs':
+      do_try_relink_start = False
     elif arg == '--xtiny-ld-gold':
       do_gold = True
     elif arg == '--xtiny-ld-v':
@@ -492,20 +495,22 @@ def wrap_linker(argv, prgdir):
   try:
     # Always do_exec=False because need to find .init_array etc.
     run_command(cmd, 'linker', is_verbose, do_exec=False)
-    if has_custom_linker_script and not relink_cmd:
-      start_suffix = get_start_suffix_from_e_flags(ro_output_file)
-    else:
-      start_suffix = get_start_suffix_from_sections(ro_output_file)
     do_relink_start = False
-    i, j = find_xtiny_start_a(cmd)
-    if i < 0:
-      # This is unexpected, specified below.
-      sys.stderr.write('xtiny: fatal: not linked to xtiny__lib_start_??.a\n')
-      sys.exit(1)
-    new_start_a = ''.join((cmd[i][:j], start_suffix, cmd[i][j + 2:]))
-    if cmd[i] != new_start_a:
-      cmd[i] = new_start_a
-      do_relink_start = True
+    if do_try_relink_start:
+      if has_custom_linker_script and not relink_cmd:
+        start_suffix = get_start_suffix_from_e_flags(ro_output_file)
+      else:
+        start_suffix = get_start_suffix_from_sections(ro_output_file)
+      i, j = find_xtiny_start_a(cmd)
+      if i < 0:
+        # This is unexpected, specified below.
+        sys.stderr.write('xtiny: fatal: not linked to xtiny__lib_start_??.a\n')
+        sys.exit(1)
+      new_start_a = ''.join((cmd[i][:j], start_suffix, cmd[i][j + 2:]))
+      if cmd[i] != new_start_a:
+        cmd[i] = new_start_a
+        do_relink_start = True
+      start_suffix = new_start_a = None
     if do_relink_start:
       # We need to link against lib__xtiny_start_??.a other than the default
       # lib__xtiny_start_nn.a if the sections .init_array or .fini_array are
@@ -556,7 +561,7 @@ def main(argv):
   has_debug = False
   do_link = True
   args_kept = []
-  has_nostdinc = False
+  do_stdinc = True
   is_compiling = False
   is_preproc = False
   bdir = None
@@ -574,6 +579,8 @@ def main(argv):
   output_file = None
   do_xtiny_sstrip = True
   do_xtiny_gold = False
+  do_defaultlibs = True
+  do_startfiles = True
 
   argi = 2  # Skip xtiny (argv[0]) and the compiler.
   while argi < len(argv):
@@ -626,8 +633,7 @@ def main(argv):
         arg.startswith('--gcc-toolchain=')):
       sys.stderr.write('fatal: unsupported xtiny flag: %s\n' % arg)
       sys.exit(1)
-    elif arg == '-nostdinc':
-      has_nostdinc = True
+    elif arg in ('-static-libgcc', '-s', '-static', '-m32'):
       continue
     elif arg == '-mxtiny-wrap-linker':  # Specify only if debugging xtiny.
       do_xtiny_wrap_linker = True
@@ -668,8 +674,14 @@ def main(argv):
       continue
     elif arg == '-Wl,--gc-sections':
       has_gc_sections = True
-    elif arg in ('-static-libgcc', '-nostdlib', '-s', '-static',
-                 '-m32'):
+    elif arg == '-nostdlib':
+      do_defaultlibs = do_startfiles = False
+    elif arg == '-nodefaultlibs':
+      do_defaultlibs = False
+    elif arg == '-nostartfiles':
+      do_startfiles = False
+    elif arg == '-nostdinc':
+      do_stdinc = False
       continue
     args_kept.append(arg)
 
@@ -712,16 +724,16 @@ def main(argv):
     if not has_debug:  # CFI, .eh_frame .eh_frame_hdr
       # -fno-unwind-tables is the default, we just play it safe.
       cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',))
-    if has_nostdinc:
+    if not do_stdinc:
       # This wipes out the include list for gcc, clang and pts-clang.
       # Ubuntu Lucid clang-3.0 doesn't respect `-nostdinc'.
       cmd.extend(('-nostdinc', '-isysroot', '/dev/null/noisysroot'))
       # TODO(pts): Try -nostdsysteminc -nobuiltininc for clang.
     else:
-      # clang default order: -I, /usr/include, clang-include, gcc-include
-      # pts-clang default order: -I, /usr-include, clang-include
-      # gcc default order: -I, gcc-include, /usr/include
-      # our default order: -I, xtiny-include, (gcc|clang)-include
+      # clang     default order: -I, /usr/include, clang-include, gcc-include
+      # pts-clang default order: -I, /usr/include, clang-include
+      # gcc       default order: -I, gcc-include, /usr/include
+      # pts-xtiny default order: -I, xtiny-include, (gcc|clang)-include
 
       # Puts it in front of -isysroot.
       cmd.extend(('-isystem', '%s/include' % progdir))
@@ -762,6 +774,8 @@ def main(argv):
     # difference if do_xtiny_linker_script is false. This works with ld and
     # gold.
     cmd.extend(('-static', '-nostdlib', '-Wl,--build-id=none', '-Wl,-N'))
+    if not do_startfiles:
+      cmd.append('-Wl,--xtiny-ld-notrs')
     if do_xtiny_gc_sections:
       cmd.append('-Wl,--gc-sections')
     if do_xtiny_wrap_linker:
@@ -797,9 +811,11 @@ def main(argv):
                   '-Wl,' + ld_prog_path))
   cmd.extend(args_kept)
   if do_link:
-    # .a files must be between the .c .o files and the linker script (-T).
-    cmd.append('%s/lib__xtiny_start_nn.a' % progdir)
-    cmd.append('%s/lib__xtiny.a' % progdir)
+    if do_startfiles:
+      # .a files must be between the .c .o files and the linker script (-T).
+      cmd.append('%s/lib__xtiny_start_nn.a' % progdir)
+    if do_defaultlibs:
+      cmd.append('%s/lib__xtiny.a' % progdir)
     if do_xtiny_wrap_linker:
       cmd.extend(('-L---',))
   if do_link and do_xtiny_linker_script:
