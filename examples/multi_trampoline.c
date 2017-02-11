@@ -13,10 +13,10 @@ true <<'#if 00' #*/
  * UID, GID, EUID, EGID, umask(), chdir(), chroot() and argv[0].
  * The argv[] coming from the
  * invocation command line is preserved upon execution, except for argv[0]
- * which is replaced. It is safe to add a setuid/setgid bits of the binary
+ * which is replaced. It is safe to add a setuid/setgid bits of the executable
  * of multi_trampoline.c. initgroups() and setgroups() are not called,
  * because this works only as root. multi_trampoline.c contains
- * optimizations for Linux i386, so the generated binary will be statically
+ * optimizations for Linux i386, so the generated executable will be statically
  * linked and very small.
  *
  * This is version multi_trampoline.c version 0.04. See also VERSION below.
@@ -43,7 +43,7 @@ true <<'#if 00' #*/
  *
  * Options:
  *
- * --target=<file>  the trampoline binary to be created
+ * --target=<file>  the trampoline executable to be created
  * --command=<prog>  command to execute, $PATH won't be consulted
  * --argv0=<str>  argv[0] to set (default: <prog> of --command)
  * --chdir=<dir>  chdir() (before, and maybe after chroot() and setuids)
@@ -184,5 +184,5 @@ CFLAGS="$WFLAGS -DNDEBUG=1 -s -Os -ansi"
 set -x; umask 022
 xtiny gcc $CARGS $CFLAGS "$0" ||
       gcc $CARGS $CFLAGS "$0" || exit 3
-echo "Binary created OK" >&2
+echo "trampoline executable created OK" >&2
 #endif */
