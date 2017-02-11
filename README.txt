@@ -491,6 +491,7 @@ ld --verbose
 TODOs
 ~~~~~
 * TODO: Add a separate (additional) .a file for __xtiny_exit_with_fini and __xtiny_exit, to make this work: xtiny gcc -W -Wall -Werror -s -Os -nostartfiles hellowr.c
+* TODO: Make -mxtiny-linker-script work with old ld: Ubuntu Lucid 2.20.1-system.20100303
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
 * TODO: Add lib directory for possible additional user libraries, add it by default as -L
