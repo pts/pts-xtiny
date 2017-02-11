@@ -4,10 +4,20 @@
 .globl _start
 .type _start, @function
 _start:
-/* This is hand-optimized assembly code of 43 bytes, `gcc-4.6 -Os'
- * generates 53 bytes.
+/* This is hand-optimized assembly code of 43 bytes for _start,
+ * `gcc-4.6 -Os' generates 53 bytes.
  *
  * The addresses in the assembly dump below are relative to _start.
+ *
+ * Mostly equivalent to this:
+ *
+ *   extern int main(int argc, char **argv, char **envp);
+ *   void _start(char *argv0) {
+ *     char **a=&argv0;
+ *     while (*a!=(char*)0) a++;
+ *     environ=(char const*const*)a+1;
+ *     exit(main(a-&argv0, &argv0, a+1));
+ *   }
  */
 .byte 0x8D, 0x5C, 0x24, 0x04
 /* ^^^ 00000000  8D5C2404          lea ebx,[esp+0x4] */
