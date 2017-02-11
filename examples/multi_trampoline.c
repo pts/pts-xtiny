@@ -1,9 +1,9 @@
 #define DUMMY /*
 true <<'#if 00' #*/
 /*
- * multi_trampoline.c: a chdir() + [chroot() + umask()] + execve() for a CGI, possibly setuid
+ * multi_trampoline.c: a chdir() + [chroot() + umask()] + setreuid() + execve() for a CGI, possibly setuid
  * by pts@fazekas.hu at Fri Jun  9 12:09:32 CEST 2006
- * $Id: multi_trampoline.c,v 1.1 2006/06/02 14:40:24 pts Exp $
+ * pts-xtiny version at Sat Feb 11 09:17:41 CET 2017
  *
  * multi_trampoline.c is a parametric C program, which, when compiled,
  * executes a real program (usually a CGI script) in a specially prepared a
@@ -19,7 +19,7 @@ true <<'#if 00' #*/
  * optimizations for Linux i386, so the generated binary will be statically
  * linked and very small.
  *
- * This is version multi_trampoline.c version 0.03.
+ * This is version multi_trampoline.c version 0.04. See also VERSION below.
  *
  * This program is free software; you can redistribute it and/or modify 
  * it under the terms of the GNU General Public License as published by
@@ -65,151 +65,21 @@ true <<'#if 00' #*/
  *
  */
 
-#if __linux && USE_LINUX_SYSCALLS /* Dat: Linux i386 only */
-
-/* asm/unistd.h */
-#define __NR_execve 11
-#define __NR_chdir  12
-#define __NR_getuid 24
-#define __NR_getgid 47
-#define __NR_geteuid  49
-#define __NR_getegid  50
-#define __NR_umask 60
-#define __NR_chroot 61
-#define __NR_setreuid 70
-#define __NR_setregid 71
-#define __NR_my_exit 1 /*__NR_exit*/
-
-#define __syscall_return(type, res) \
-do { \
-  if ((unsigned long)(res) >= (unsigned long)(-125)) { \
-    errno_var = -(res); \
-    res = -1; \
-  } \
-  return (type) (res); \
-} while (0)
-
-/* XXX - _foo needs to be __foo, while __NR_bar could be _NR_bar. */
-#define _syscall0(type,name) \
-type name(void) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-  : "=a" (__res) \
-  : "0" (__NR_##name)); \
-__syscall_return(type,__res); \
-}
-
-#define _syscall1(type,name,type1,arg1) \
-type name(type1 arg1) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-  : "=a" (__res) \
-  : "0" (__NR_##name),"b" ((long)(arg1))); \
-__syscall_return(type,__res); \
-}
-
-#define _syscall2(type,name,type1,arg1,type2,arg2) \
-type name(type1 arg1,type2 arg2) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-  : "=a" (__res) \
-  : "0" (__NR_##name),"b" ((long)(arg1)),"c" ((long)(arg2))); \
-__syscall_return(type,__res); \
-}
-
-#define _syscall3(type,name,type1,arg1,type2,arg2,type3,arg3) \
-type name(type1 arg1,type2 arg2,type3 arg3) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-  : "=a" (__res) \
-  : "0" (__NR_##name),"b" ((long)(arg1)),"c" ((long)(arg2)), \
-      "d" ((long)(arg3))); \
-__syscall_return(type,__res); \
-}
-
-#define _syscall4(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4) \
-type name (type1 arg1, type2 arg2, type3 arg3, type4 arg4) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-  : "=a" (__res) \
-  : "0" (__NR_##name),"b" ((long)(arg1)),"c" ((long)(arg2)), \
-    "d" ((long)(arg3)),"S" ((long)(arg4))); \
-__syscall_return(type,__res); \
-} 
-
-#define _syscall5(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4, \
-    type5,arg5) \
-type name (type1 arg1,type2 arg2,type3 arg3,type4 arg4,type5 arg5) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-  : "=a" (__res) \
-  : "0" (__NR_##name),"b" ((long)(arg1)),"c" ((long)(arg2)), \
-    "d" ((long)(arg3)),"S" ((long)(arg4)),"D" ((long)(arg5))); \
-__syscall_return(type,__res); \
-}
-
-#define _syscall6(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4, \
-    type5,arg5,type6,arg6) \
-type name (type1 arg1,type2 arg2,type3 arg3,type4 arg4,type5 arg5,type6 arg6) \
-{ \
-long __res; \
-__asm__ volatile ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80 ; pop %%ebp" \
-  : "=a" (__res) \
-  : "i" (__NR_##name),"b" ((long)(arg1)),"c" ((long)(arg2)), \
-    "d" ((long)(arg3)),"S" ((long)(arg4)),"D" ((long)(arg5)), \
-    "0" ((long)(arg6))); \
-__syscall_return(type,__res); \
-}
-
-static int errno_var;
-static char const*const*environ;
-
-static inline _syscall1(int,chdir,char const*,dir);
-static inline _syscall1(int,chroot,char const*,dir);
-static inline _syscall1(int,my_exit,int,exitcode);
-static inline _syscall3(int,execve,const char*,file,char**,argv,char**,envp);
-static inline _syscall0(int,geteuid);
-static inline _syscall0(int,getegid);
-static inline _syscall0(int,getuid);
-static inline _syscall0(int,getgid);
-static inline _syscall1(int,umask,int,mask);
-static inline _syscall2(int,setreuid,int,r,int,e);
-static inline _syscall2(int,setregid,int,r,int,e);
-#define exit(c) my_exit(c)
-
-void _start(char*argv0);
-int main(int argc,char**argv,char**envp);
-
-/** An entry point for `ld -e'. If the name of this function was _start, so
- * `gcc tcpserv.c' won't work because of a conflict with libc.
- */
-void _start(char *argv0) {
-  /* fdprintf(2, "My main 0x%x 0x%x 0x%x 0x%x.\n", x, y, z, *(int*)x); */
-  char **a=&argv0;
-  while (*a!=(char*)0) a++;
-  environ=(char const*const*)a+1;
-  my_exit(main(a-&argv0, &argv0, a+1));
-}  
-
+#ifdef __XTINY__
+#include <xtiny.h>
 #else
-  #define _BSD_SOURCE 1 /* setregid(), setreuid() */
-  #include <unistd.h> /* execve(), setregid(), setreuid(), chroot() */
-  #include <stdlib.h> /* exit() */
-  #include <sys/stat.h> /* umask */
-  extern char** environ;
+#define _BSD_SOURCE 1 /* setregid(), setreuid() */
+#include <unistd.h> /* execve(), setregid(), setreuid(), chroot() */
+#include <stdlib.h> /* exit() */
+#include <sys/stat.h> /* umask */
+extern char** environ;
 #endif
 
-int main(int argc, char**argv, char**envp) {
+int main(int argc, char**argv) {
 #ifdef A_CHDIR
   int z;
 #endif
-  (void)argc; (void)argv; (void)envp;
+  (void)argc; (void)argv;
 #ifdef U_UMASK
   umask(U_UMASK); /* for multi_trampoline.c */
 #endif
@@ -255,7 +125,7 @@ int main(int argc, char**argv, char**envp) {
     char const *q;
     char const *e;
     char **ep, **ew;
-    for (ep=ew=(char**)(long)environ; *ep!=0/*NULL*/; ep++) {
+    for (ep=ew=environ; *ep!=0/*NULL*/; ep++) {
       p=A_ONLYENV; /* comma-separated list of environment variables (ending with =) or prefixes to keep */	
       while (1) { /* Dat: now p is the next entry-part to match */
         while (*p==',') p++;
@@ -272,13 +142,13 @@ int main(int argc, char**argv, char**envp) {
   }
 #endif
   argv[0]=A_ARGV0; /* for multi_trampoline.c */
-  execve(A_COMMAND,argv,(char**)(long)environ);
+  execve(A_COMMAND,argv,environ);
   return 126;
 } /*
 #if 00
 set -o shwordsplit 2>/dev/null # Dat: for zsh
 export \
-VERSION="0.03";
+VERSION="0.04";
 echo "This is multi_trampoline.c v$VERSION by pts@fazekas.hu
 The license is GNU GPL >=2.0. It comes without warranty. USE AT YOUR OWN RISK!" >&2
 CARGS="`perl -e 'for (@ARGV) {
@@ -297,7 +167,7 @@ CARGS="`perl -e 'for (@ARGV) {
   die "missing --command=\n" if !defined $H{command};
   die "missing --target=\n" if !defined $H{target};
   die "missing --chdir= before --chroot\n" if !defined $H{chdir} and
-    defined $H{chroot};
+      defined $H{chroot};
   $H{argv0}=$H{command} if !defined $H{argv0};
   %CQ=("\\\""=>"\\\"","\\\\"=>"\\\\","\r"=>"r","\n"=>"n","\0"=>"0","\t"=>"t",
     " "=>"\x20");
@@ -310,9 +180,9 @@ test "$CARGS" || exit 2
 WFLAGS="-Wall -W -Wstrict-prototypes -Wnested-externs"
 WFLAGS="$WFLAGS -Winline -Wpointer-arith -Wbad-function-cast -Wcast-qual"
 WFLAGS="$WFLAGS -Wmissing-prototypes -Wmissing-declarations"
-CFLAGS="$WFLAGS -DNDEBUG=1 -Os"
+CFLAGS="$WFLAGS -DNDEBUG=1 -s -Os -ansi"
 set -x; umask 022
-gcc -DUSE_LINUX_SYSCALLS -s -nostdlib $CARGS $CFLAGS "$0" ||
-gcc -ansi                             $CARGS $CFLAGS "$0" || exit 3
+xtiny gcc $CARGS $CFLAGS "$0" ||
+      gcc $CARGS $CFLAGS "$0" || exit 3
 echo "Binary created OK" >&2
 #endif */
