@@ -61,9 +61,10 @@ make it work with gcc-4.3, gcc-4.2 and gcc-4.1 if there is interest.
 You have to install the compiler separately. You can install it from package
 (e.g. `sudo apt-get install gcc' on Debian-ish systems).
 
-pts-xtiny includes a linker (ld.xtiny) from a recent GNU Binutils, so it
-doesn't matter which version of Binutils you have installed, except fro the
-assembler (as).
+pts-xtiny includes a linker (ld.xtiny) and an assembler (as.xtiny), and it
+doesn't use the GNU Binutils installed to your system. Thus your Binutils
+can be very old (and incompatible with pts-xtiny), pts-xtiny will still work
+consistently.
 
 Q3. Which architectures are supported?
 """"""""""""""""""""""""""""""""""""""
@@ -524,7 +525,6 @@ ld --verbose
 TODOs
 ~~~~~
 * TODO: Provide a non-inline version of puts in lib__xtiny.a.
-* TODO: Add assembler: xtiny.as.
 * TODO: Try again with pts-clang, add tutorial.
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
