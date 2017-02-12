@@ -408,6 +408,8 @@ def wrap_linker(argv, prgdir):
         add_linkdir(arg[2:])
     elif arg.startswith('--library-path='):
       add_linkdir(arg.split('=' , 1)[1])
+    elif arg.startswith('--sysroot='):
+      pass  # Ignore --sysroot, Binutils compiled without --with-sysroot doesn't support it.
     elif arg == '--gc-sections':
       do_gc_sections = True
       cmd.append(arg)
