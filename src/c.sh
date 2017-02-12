@@ -10,6 +10,10 @@ START_FILES_S_IN_ORDER='
     start/__xtiny_exit.S
 '
 
+EXIT_FILES_S_IN_ORDER='
+    start/__xtiny_exit.S
+'
+
 FILES_S_IN_ORDER='
     misc/__xtiny_environ.s
     misc/__xtiny_errno.s
@@ -65,6 +69,15 @@ for VV in {i,n}{f,n}; do
   ar crD ../lib__xtiny_start_"$VV".a "${@/%.*/.o}"
   cd ..
 done
+
+mkdir obj__xtiny_exit
+cd obj__xtiny_exit
+set -- $EXIT_FILES_S_IN_ORDER
+gcc -m32 -c "${@/#/..\/}"  # No -DDO_INIT_ARRAY, no -DDO_FINI_ARRAY.
+rm -f ../lib__xtiny_exit.a
+set -- "${@#*/}"
+ar crD ../lib__xtiny_exit.a "${@/%.*/.o}"
+cd ..
 
 ln -s ../include
 cp ../xtiny ./xtiny

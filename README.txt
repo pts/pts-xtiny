@@ -380,6 +380,10 @@ Q32. Can I define my own entry point (_start function)?
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
 Yes, it works with or without `xtiny ... -nostartfiles', with 0 overhead.
 
+You can specify -nostartfiles, but it's generally not needed, because even
+if you don't specify it, your definition of _start will take precedence over
+the definition in the pts-xtiny libc.
+
 Q33. How do I get rid of the pts-xtiny libc in my executable?
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Specify `xtiny ... -nodefaultlibs' or `xtiny ... -nostdlib', these GCC flags
@@ -496,7 +500,6 @@ ld --verbose
 
 TODOs
 ~~~~~
-* TODO: Add a separate (additional) .a file for __xtiny_exit_with_fini and __xtiny_exit, to make this work: xtiny gcc -W -Wall -Werror -s -Os -nostartfiles hellowr.c
 * TODO: Make -mxtiny-linker-script work with old ld: Ubuntu Lucid 2.20.1-system.20100303
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?

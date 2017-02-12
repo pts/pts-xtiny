@@ -814,6 +814,9 @@ def main(argv):
     if do_startfiles:
       # .a files must be between the .c .o files and the linker script (-T).
       cmd.append('%s/lib__xtiny_start_nn.a' % progdir)
+    else:
+      # Make exit() and _exit() still available from user code.
+      cmd.append('%s/lib__xtiny_exit.a' % progdir)
     if do_defaultlibs:
       cmd.append('%s/lib__xtiny.a' % progdir)
     if do_xtiny_wrap_linker:
