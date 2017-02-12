@@ -829,6 +829,7 @@ def main(argv):
         # would remove gcc-include as well.
         cmd.extend(('-isysroot', '%s/noisysroot' % progdir))
     if opt in (None, '-Os'):
+      # TODO(pts): clang-3.9: warning: optimization flag '-falign-functions=1' is not supported
       cmd.extend(('-Os', '-falign-functions=1'))
       if not is_clang:  # Clang 3.4 doesn't have these.
         cmd.extend(('-mpreferred-stack-boundary=2',

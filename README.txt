@@ -631,6 +631,7 @@ TODOs
   compiled with clang-4.4, and only 6063 bytes when compiled with gcc-4.8?
 * TODO: pts-clang bug: no include paths in -E -.
 * TODO: bad string constants for regular clang packages.
+* TODO: clang-3.9: warning: optimization flag '-falign-functions=1' is not supported
 * TODO: __builtin_strlen acts really strangely -- does it still with pts-clang and regular clang?
 * TODO: Use glibc's smart __extern_always_inline instead?
 * TODO: Does __builtin_memcpy get hardwired with gcc -O3?
