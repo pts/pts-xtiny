@@ -478,6 +478,12 @@ About symbol lookup order in .o and .a files
   nm -s bar2foo.a
   ar t foobar2.a
   ar t bar2foo.a
+* GNU ar runs (a built-in) ranlib by default if .o files are added
+* libA.a will look for symbol definitions in libA.a only; and later ld will
+  look in subsequent .a files in the command-line (and not earlier ones) to
+  resolve symbols undefined after libA.a
+* for circular dependencies, specify `-\( libA.a libB.a -\)' or (only if 1
+  layer of dependency), `libA.a libB.a libA.a'.
 
 About malloc
 """"""""""""
