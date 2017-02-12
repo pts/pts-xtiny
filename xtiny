@@ -701,6 +701,8 @@ def main(argv):
   if is_compiling or is_preproc:
     # For detecting whether <xtiny.h> should be included.
     cmd.append('-D__XTINY__')
+    if do_defaultlibs:
+      cmd.append('-D__XTINY_DEFAULTLIBS__')
   if is_compiling:
     if is_clang:
       # To avoid this (which only appears with `clang -c' and `clang -S':
