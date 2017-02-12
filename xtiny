@@ -578,13 +578,23 @@ def main(argv):
     compiler2 = add_dir_from_path(follow_symlinks(compiler_cmd[0]))
     if '/' in compiler2:
       compiler2dir = os.path.dirname(compiler2)
-      compiler_include_dir = compiler2dir + '/../clanginclude'
+      # With pts-clang, use clang.bin, because the clang wrapper doesn't
+      # allow -B.
+      if not compiler2.endswith('.bin'):
+        compiler2 += '.bin'
+      p = os.path.basename(compiler2)
+      if p.endswith('.bin'):
+        p = p[:-4]
+      i = p.rfind('-')
+      if i < 0:
+        i = len(p)
+      compiler_suffix = p[i:]
+      compiler_include_dir = (
+          compiler2dir + '/../clanginclude' + compiler_suffix)
       if (os.path.isfile(compiler_include_dir + '/stdarg.h') and
-          os.path.isfile(compiler2dir + '/clang.bin')):
-        # With pts-clang, use clang.bin, because the clang wrapper doesn't
-        # allow -B.
+          os.path.isfile(compiler2)):
         compiler_basename = os.path.basename(compiler_cmd[0])
-        if '++' in compiler_cmd[0]:
+        if '++' in compiler_basename:
           if '-3.' not in compiler_basename or (
               '-3.0' in compiler_basename and
               '-3.1' in compiler_basename and
@@ -593,14 +603,14 @@ def main(argv):
             compiler_cmd.append('-ccc-cxx')
           else:
             compiler_cmd.append('--driver-mode=g++')
-        compiler_basename = None
-        compiler_cmd[0] = compiler2dir + '/clang.bin'
+        compiler_cmd[0] = compiler2
         p = compiler2dir + '/../clangld32/ld.bin'
         if os.path.isfile(p):
           compiler_ld = p
         p = None
       else:
         compiler_include_dir = None
+      compiler_suffix = None  # Save memory.
   compiler_basename = None  # Save memory.
 
   is_verbose = False
