@@ -772,6 +772,10 @@ def main(argv):
                     '-falign-jumps=1', '-falign-loops=1'))
     if do_xtiny_gc_sections:
       cmd.extend(('-ffunction-sections', '-fdata-sections'))
+  if do_link and do_xtiny_wrap_linker:
+    cmd.extend(('-B', '%s/bdir' % progdir))  # Wrap ld and as.
+  elif is_compiling:  # Just for the assembler (adir/as --> as.xtiny).
+    cmd.extend(('-B', '%s/adir' % progdir))
   if do_link:
     # -s is not necessary here, it would be passed as `ld -s', but `ld -T'
     # with the linker script overrides that. We specigy -s anyway so that it
@@ -830,8 +834,7 @@ def main(argv):
             '-Wl,--xtiny-ld-uof,%s,--xtiny-ld-uof-end' %
             ','.join(used_object_files))
       # This must be appended last because of --xtiny-run-ld.
-      cmd.extend(('-B', '%s/bdir' % progdir,
-                  '-Wl,--xtiny-run-ld,' + xtiny_ld))
+      cmd.append('-Wl,--xtiny-run-ld,' + xtiny_ld)
   cmd.extend(args_kept)
   if do_link:
     if do_startfiles:
