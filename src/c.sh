@@ -36,10 +36,12 @@ test -f string/memset.s
 rm -rf obj obj__* lib__*.a */*.o
 rm -f include xtiny
 
+GCCDETFLAGS=-frandom-seed=9853
+
 mkdir obj__xtiny
 cd obj__xtiny
 set -- $FILES_S_IN_ORDER
-gcc -m32 -c "${@/#/..\/}"
+gcc $GCCDETFLAGS -m32 -c "${@/#/..\/}"
 rm -f ../lib__xtiny.a
 set -- "${@#*/}"
 # Automatic ranlib.
@@ -56,7 +58,7 @@ for VV in {i,n}{f,n}; do
   mkdir obj__xtiny_start_"$VV"
   cd obj__xtiny_start_"$VV"
   set -- $START_FILES_S_IN_ORDER
-  gcc -m32 -c $DEFINES "${@/#/..\/}"
+  gcc $GCCDETFLAGS -m32 -c $DEFINES "${@/#/..\/}"
   rm -f ../lib__xtiny_start_"$VV".a
   set -- "${@#*/}"
   # Automatic ranlib.
@@ -70,7 +72,8 @@ cd malloc
 C_FILES='__xtiny_lite_malloc.c calloc.c'
 set -- $C_FILES
 rm -f *.o
-../xtiny gcc -s -O2 -W -Wall -Wextra -Werror -c "$@"
+# SUXX: The number NNNN in heap_end.NNNN may still change.
+../xtiny gcc $GCCDETFLAGS -s -O2 -W -Wall -Wextra -Werror -c "$@"
 ar crD ../lib__xtiny.a "${@/%.*/.o}"
 cd ..
 
