@@ -389,6 +389,10 @@ Q33. How do I get rid of the pts-xtiny libc in my executable?
 Specify `xtiny ... -nodefaultlibs' or `xtiny ... -nostdlib', these GCC flags
 work as documented.
 
+Please note that some functions (such as system call read(2) and library
+function `puts') defined in xtiny.h will still work with -nodefaultlibs and
+-nostdlib, because they are defined `static inline'.
+
 Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
@@ -500,6 +504,7 @@ ld --verbose
 
 TODOs
 ~~~~~
+* TODO: Provide a non-inline version of puts in lib__xtiny.a.
 * TODO: Make -mxtiny-linker-script work with old ld: Ubuntu Lucid 2.20.1-system.20100303
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?

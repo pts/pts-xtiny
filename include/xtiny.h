@@ -560,7 +560,7 @@ typedef unsigned long sigset_t;
 #endif
 
 /* Renamed to avoid conflict with glibc: extern __thread int errno; */
-extern int errno __asm__("__xtiny_errno");
+int errno __asm__("__xtiny_errno");
 #define __syscall_return(type, res) \
 do { \
   if ((unsigned long)(res) >= (unsigned long)(-200)) { \
@@ -711,8 +711,6 @@ __asm__ __volatile__ ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80
 __syscall_return(type,__res); \
 }
 
-extern char **environ __asm__("__xtiny_environ");
-
 _syscall1_nomemory(int,close,int,fd)
 _syscall3(int,open,const char *,pathname,int,flags,mode_t,mode)
 _syscall1(int,chdir,const char*,dir)
@@ -846,6 +844,8 @@ extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__)) __
 extern int atexit(void (*function)(void)) __attribute__((regparm(1), nothrow));
 
 extern void abort() __attribute__((noreturn, nothrow));
+
+char **environ __asm__("__xtiny_environ");
 
 /* Like malloc, but sets bytes to 0 before returning. */
 
