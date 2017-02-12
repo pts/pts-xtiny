@@ -182,7 +182,9 @@ typedef char *caddr_t;
 __extension__ typedef int intptr_t;
 __extension__ typedef unsigned int uintptr_t;
 __extension__ typedef unsigned int socklen_t;
+#if !defined(__cplusplus)
 typedef int wchar_t;
+#endif
 typedef int register_t __attribute__ ((__mode__ (__word__)));
 typedef long int fd_mask;
 typedef unsigned long int pthread_t;

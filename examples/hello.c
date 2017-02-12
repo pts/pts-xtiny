@@ -4,7 +4,7 @@
  * $ ls -ld hello.{xstatic,xtiny,dynamic}
  * -rwxr-xr-x 1 pts eng 5540 Feb  9 17:50 hello.dynamic
  * -rwxr-xr-x 1 pts pts 7340 Feb  9 17:49 hello.xstatic
- * -rwxr-xr-x 1 pts pts  292 Feb  9 17:49 hello.xtiny
+ * -rwxr-xr-x 1 pts pts  234 Feb  9 17:49 hello.xtiny
  */
 
 #ifdef __XTINY__

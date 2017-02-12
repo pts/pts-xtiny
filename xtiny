@@ -31,6 +31,7 @@ STDARG_DIR_RE = re.compile(r'"(/[^\n"]*)/stdarg[.]h"')
 
 
 def find_compiler_include_dir(compiler, progdir):
+  assert 0, (compiler, progdir)
   e_cmd = (compiler, '-m32', '-E', '%s/stdarginc.c' % progdir)
   try:
     p = subprocess.Popen(e_cmd, stdout=subprocess.PIPE)
@@ -538,25 +539,71 @@ def wrap_linker(argv, prgdir):
     maybe_remove_files(to_remove_after_link)
 
 
-def main(argv):
-  if len(argv) < 2 or argv[1] == '--help':
-    sys.stderr.write(
-        'Usage: %s <gcc|g++|clang|clang++> [<compiler-arg>...]\n'
-        'Invokes the C/C++ compiler with -static against the xtiny libc\n')
-    sys.exit(1)
-  prog = __file__
+def follow_symlinks(prog):
   try:
     while stat.S_ISLNK(os.lstat(prog).st_mode):
       prog = os.path.join(os.path.dirname(prog), os.readlink(prog))
       # TODO(pts): Collapse ..s in the path etc.
   except OSError, e:
     pass
+  return prog
+
+
+def add_dir_from_path(prog):
+  if '/' not in prog:
+    for dirname in os.getenv('PATH', '/bin:/usr/bin').split(':'):
+      prog2 = os.path.join(dirname, prog)
+      if os.path.isfile(prog2):
+        return prog2
+  return prog
+
+
+def main(argv):
+  if len(argv) < 2 or argv[1] == '--help':
+    sys.stderr.write(
+        'Usage: %s <gcc|g++|clang|clang++> [<compiler-arg>...]\n'
+        'Invokes the C/C++ compiler with -static against the xtiny libc\n' %
+        (argv or 'xtiny')[0])
+    sys.exit(1)
+  prog = follow_symlinks(__file__)
   progdir = os.path.dirname(prog)
   if '--xtiny-run-ld' in argv[1:]:
     return wrap_linker(argv, progdir)
-  compiler = argv[1]
-  compiler_basename = os.path.basename(compiler)
+  compiler_cmd = [argv[1]]
+  compiler_basename = os.path.basename(compiler_cmd[0])
   is_clang = 'clang' in compiler_basename
+  compiler_include_dir = None
+  compiler_ld = None
+
+  if is_clang:
+    compiler2 = add_dir_from_path(follow_symlinks(compiler_cmd[0]))
+    if '/' in compiler2:
+      compiler2dir = os.path.dirname(compiler2)
+      compiler_include_dir = compiler2dir + '/../clanginclude'
+      if (os.path.isfile(compiler_include_dir + '/stdarg.h') and
+          os.path.isfile(compiler2dir + '/clang.bin')):
+        # With pts-clang, use clang.bin, because the clang wrapper doesn't
+        # allow -B.
+        compiler_basename = os.path.basename(compiler_cmd[0])
+        if '++' in compiler_cmd[0]:
+          if '-3.' not in compiler_basename or (
+              '-3.0' in compiler_basename and
+              '-3.1' in compiler_basename and
+              '-3.2' in compiler_basename and
+              '-3.3' in compiler_basename):
+            compiler_cmd.append('-ccc-cxx')
+          else:
+            compiler_cmd.append('--driver-mode=g++')
+        compiler_basename = None
+        compiler_cmd[0] = compiler2dir + '/clang.bin'
+        p = compiler2dir + '/../clangld32/ld.bin'
+        if os.path.isfile(p):
+          compiler_ld = p
+        p = None
+      else:
+        compiler_include_dir = None
+  compiler_basename = None  # Save memory.
+
   is_verbose = False
   opt = None
   has_debug = False
@@ -713,7 +760,8 @@ def main(argv):
   if not do_xtiny_wrap_linker and xtiny_ld != '.compiler':
     print >>sys.stderr, 'fatal: if you use -mxtiny-wrap-linker, only -mxtiny-ld=.compiler works'
     sys.exit(2)
-  cmd = [compiler, '-m32']
+  cmd = list(compiler_cmd)
+  cmd.append('-m32')
   if is_compiling or is_preproc:
     # For detecting whether <xtiny.h> should be included.
     cmd.append('-D__XTINY__')
@@ -739,8 +787,12 @@ def main(argv):
     cmd.append('-fno-ident')
     # Prevent `conflicting types for built-in function' error with
     # `xtiny gcc -Wsystem-headers -W -Wall -Werror'.
-    cmd.extend(('-fno-builtin-exit', '-fno-builtin-_exit',
-                '-fno-builtin-_Exit'))
+    if is_clang:
+      # Clang 3.3 doesn't support -fno-builtin-exit etc.
+      cmd.append('-fno-builtin')
+    else:
+      cmd.extend(('-fno-builtin-exit', '-fno-builtin-_exit',
+                  '-fno-builtin-_Exit'))
     if not has_debug:  # CFI, .eh_frame .eh_frame_hdr
       # -fno-unwind-tables is the default, we just play it safe.
       cmd.extend(('-fno-unwind-tables', '-fno-asynchronous-unwind-tables',))
@@ -758,7 +810,9 @@ def main(argv):
       # Puts it in front of -isysroot.
       cmd.extend(('-isystem', '%s/include' % progdir))
       if is_clang:
-        compiler_include_dir = find_compiler_include_dir(compiler, progdir)
+        if compiler_include_dir is None:
+          compiler_include_dir = find_compiler_include_dir(
+              compiler_cmd[0], progdir)
         cmd.extend(('-nostdinc', '-isysroot', '/dev/null/noisysroot',
                     '-isystem', compiler_include_dir))
       else:  # GCC.
@@ -772,6 +826,8 @@ def main(argv):
                     '-falign-jumps=1', '-falign-loops=1'))
     if do_xtiny_gc_sections:
       cmd.extend(('-ffunction-sections', '-fdata-sections'))
+  # Please note that clang doesn't use an external `as' the as symlink is
+  # irrelevant.
   if do_link and do_xtiny_wrap_linker:
     cmd.extend(('-B', '%s/bdir' % progdir))  # Wrap ld and as.
   elif is_compiling:  # Just for the assembler (adir/as --> as.xtiny).
@@ -804,7 +860,10 @@ def main(argv):
       cmd.append('-Wl,--gc-sections')
     if do_xtiny_wrap_linker:
       if xtiny_ld == '.compiler':  # Use whatever linker gcc uses.
-        xtiny_ld = get_bdir_prog_path(compiler, bdir, 'ld')
+        if compiler_ld is not None:
+          xtiny_ld = compiler_ld
+        else:
+          xtiny_ld = get_bdir_prog_path(compiler_cmd[0], bdir, 'ld')
         if is_clang and xtiny_ld.endswith('/clangld32/ld'):
           # pts-clang. Append .bin to the compiler name, because the wrapper
           # binary rejects the -B flag.

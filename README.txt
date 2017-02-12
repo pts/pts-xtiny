@@ -15,6 +15,38 @@ not used by default.
 FAQ
 ~~~
 
+Q0. How do I install pts-xtiny?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+You need a Linux i386 or amd64 system.
+
+First install Python (you can also use
+https://github.com/pts/staticpython/raw/master/release/python2.7-static).
+
+Then download xtiny:
+
+  $ git clone https://github.com/pts/pts-xtiny
+  $ cd pts-xtiny
+  $ ./xtiny
+
+You can put the pts-xtiny directory to your $PATH, so that you can type just
+`xtiny' instead of `./xtiny'.
+
+Install a C compiler: GCC or Clang, preferably gcc.
+You can install the compiler from distribution package
+(e.g. `sudo apt-get install gcc' on Debian-ish systems), or you can download
+and use pts-clang (see Q35) without installation.
+
+Once everything is set up, compile with `xtiny gcc -Os ...' instead of `gcc
+...'. For example, this is how to compile the hello-world:
+
+  $ ./xtiny gcc -Os examples/hello.c
+  $ ./a.out
+  Hello, World!
+  $ ls -l a.out
+  -rwxr-xr-x 1 pts pts 234 Feb 12 17:38 a.out
+
+You can use most of the gcc flags (e.g. -W -Wall -Wextra -Werror).
+
 Q1. How large is a typical executable?
 """"""""""""""""""""""""""""""""""""""
 A typical Hello, World program is only 200 bytes:
@@ -57,9 +89,6 @@ Q2. Which compilers are supported?
 """"""""""""""""""""""""""""""""""
 gcc-4.4 and later, and clang-3.0 and later. Probably it would be possible to
 make it work with gcc-4.3, gcc-4.2 and gcc-4.1 if there is interest.
-
-You have to install the compiler separately. You can install it from package
-(e.g. `sudo apt-get install gcc' on Debian-ish systems).
 
 pts-xtiny includes a linker (ld.xtiny) and an assembler (as.xtiny), and it
 doesn't use the GNU Binutils installed to your system. Thus your Binutils
@@ -330,7 +359,7 @@ Known limitations of `-T xtiny.scr' enabled by -mxtiny-linker-script:
   and sstrip_elf_executable. (xtiny.scr used to be better until the
   alternative was improved in xtiny.)
 * GNU gold (the alternative linker to GNU ld) doesn't support linker
-  scripts (-T), and GNU gold may be used in some clang configurations (e.g.
+  scripts (-T), and GNU gold may be used in some Clang configurations (e.g.
   pts-clang) by default.
 
 In general, the output executables with or without -mxtiny-linker-script
@@ -451,8 +480,24 @@ add this to your .c file:
   #endif
   #include <xtiny.h>
 
-If you have multiple .c files, add `char *__forward_malloc_heap_end = ...'
-to exactly one of them.
+Q36. How do I use pts-xtiny with pts-clang?
+"""""""""""""""""""""""""""""""""""""""""""
+This may not work, e.g. compilation will fail or it will create buggy
+code.
+
+Download pts-xtiny first, and put it to your $PATH.
+
+Example download of pts-clang:
+
+  $ rm -f pts-clang-latest.sfx.7z
+  $ wget http://pts.50.hu/files/pts-clang/pts-clang-latest.sfx.7z
+  $ chmod +x pts-clang-latest.sfx.7z
+  $ ./pts-clang-latest.sfx.7z -y  # Creates the pts-clang directory.
+
+Use it as: `xtiny .../pts-clang/bin/clang ...'.
+
+You can also put pts-clang/bin/clang to (the beginning of) your $PATH, and
+then use it as: `xtiny clang ...'.
 
 Technical notes
 ~~~~~~~~~~~~~~~
@@ -585,6 +630,8 @@ TODOs
 * TODO: Anomaly: Why is pts_lbsearch.xtiny (in pts-line-bisect) 6888 bytes when
   compiled with clang-4.4, and only 6063 bytes when compiled with gcc-4.8?
 * TODO: pts-clang bug: no include paths in -E -.
+* TODO: bad string constants for regular clang packages.
+* TODO: __builtin_strlen acts really strangely -- does it still with pts-clang and regular clang?
 * TODO: Use glibc's smart __extern_always_inline instead?
 * TODO: Does __builtin_memcpy get hardwired with gcc -O3?
 * TODO: Add proper C++ `const char*' overloads for strstr etc, like
