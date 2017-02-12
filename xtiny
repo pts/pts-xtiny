@@ -31,7 +31,6 @@ STDARG_DIR_RE = re.compile(r'"(/[^\n"]*)/stdarg[.]h"')
 
 
 def find_compiler_include_dir(compiler, progdir):
-  assert 0, (compiler, progdir)
   e_cmd = (compiler, '-m32', '-E', '%s/stdarginc.c' % progdir)
   try:
     p = subprocess.Popen(e_cmd, stdout=subprocess.PIPE)
