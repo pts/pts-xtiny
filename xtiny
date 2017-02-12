@@ -354,7 +354,6 @@ def wrap_linker(argv, prgdir):
   output_file = 'a.out'
   do_debug = True
   do_sstrip = True
-  do_gold = False
   do_try_relink_start = True
   while argi < len(argv):
     arg = argv[argi]
@@ -373,8 +372,6 @@ def wrap_linker(argv, prgdir):
       do_sstrip = False
     elif arg == '--xtiny-ld-notrs':
       do_try_relink_start = False
-    elif arg == '--xtiny-ld-gold':
-      do_gold = True
     elif arg == '--xtiny-ld-v':
       is_verbose = True
     elif arg == '--xtiny-ld-uof':
@@ -441,14 +438,6 @@ def wrap_linker(argv, prgdir):
       cmd.append(arg)
   assert cmd[0] is not None, 'missing --xtiny-run-ld flag'
   assert '-L---' not in argv, '-L--- specified too late'
-  if do_gold:
-    items = cmd[0].split('/')
-    prog = items[-1]
-    if prog.endswith('.bin'):
-      items[-1] = 'gold.bin'
-    else:
-      items[-1] = 'gold'
-    cmd[0] = '/'.join(items)
   if '-T' in argv:
     has_custom_linker_script = True
   if used_object_files:
@@ -590,7 +579,6 @@ def main(argv):
   is_writing_object_files = False
   output_file = None
   do_xtiny_sstrip = True
-  do_xtiny_gold = False
   do_defaultlibs = True
   do_startfiles = True
   xtiny_ld = None
@@ -673,12 +661,6 @@ def main(argv):
     elif arg == '-mno-xtiny-sstrip':  # Specify only if debugging xtiny.
       do_xtiny_sstrip = False
       continue
-    elif arg == '-mxtiny-gold':  # Use the GNU gold linker.
-      do_xtiny_gold = True
-      continue
-    elif arg == '-mno-xtiny-gold':
-      do_xtiny_gold = False
-      continue
     elif arg == '-mxtiny-gcs':
       do_xtiny_gc_sections = True
       continue
@@ -708,10 +690,18 @@ def main(argv):
   else:
     del output_object_files[:]
 
+  if xtiny_ld is None:
+    if do_xtiny_wrap_linker:
+      xtiny_ld = '.xtiny'
+    else:
+      xtiny_ld = '.compiler'
   if (do_xtiny_linker_script and
       (do_xtiny_gc_sections or has_gc_sections) and
       not do_xtiny_wrap_linker):
     print >>sys.stderr, 'fatal: if you use -Wl,--gc-sections or -mxtiny-gcs, you need -mxtiny-wrap-linker (default) or -mno-xtiny-linker-script'
+    sys.exit(2)
+  if not do_xtiny_wrap_linker and xtiny_ld != '.compiler':
+    print >>sys.stderr, 'fatal: if you use -mxtiny-wrap-linker, only -mxtiny-ld=.compiler works'
     sys.exit(2)
   cmd = [compiler, '-m32']
   if is_compiling or is_preproc:
@@ -797,27 +787,26 @@ def main(argv):
     if do_xtiny_gc_sections:
       cmd.append('-Wl,--gc-sections')
     if do_xtiny_wrap_linker:
-      if xtiny_ld is None:
+      if xtiny_ld == '.compiler':  # Use whatever linker gcc uses.
         xtiny_ld = get_bdir_prog_path(compiler, bdir, 'ld')
-      if is_clang and xtiny_ld.endswith('/clangld32/ld'):
-        # pts-clang. Append .bin to the compiler name, because the wrapper
-        # binary rejects the -B flag.
-        #
-        # Please note that there is no problem for non-linking (e.g. -E, -c)
-        # with the pts-clang wrapper, so we don't modify it.
-        cmd[0] += '.bin'
-        if do_xtiny_linker_script:
-          # pts-clang uses the GNU gold linker, which ignores -T for the linker
-          # script. Let's use the system ld instead.
-          # TODO(pts): Use the built-in ld if available.
-          xtiny_ld = 'ld'
+        if is_clang and xtiny_ld.endswith('/clangld32/ld'):
+          # pts-clang. Append .bin to the compiler name, because the wrapper
+          # binary rejects the -B flag.
+          #
+          # Please note that there is no problem for non-linking (e.g. -E, -c)
+          # with the pts-clang wrapper, so we don't modify it.
+          cmd[0] += '.bin'
+          if do_xtiny_linker_script:
+            # pts-clang uses the GNU gold linker, which ignores -T for the
+            # linker script. Let's use the system ld instead.
+            xtiny_ld = progdir + '/ld.xtiny'
+      elif xtiny_ld == '.xtiny':
+        xtiny_ld = progdir + '/ld.xtiny'
       assert ',' not in xtiny_ld, xtiny_ld
       if is_verbose:
         cmd.append('-Wl,--xtiny-ld-v')
       if not do_xtiny_sstrip:
         cmd.append('-Wl,--xtiny-ld-noss')
-      if do_xtiny_gold:
-        cmd.append('-Wl,--xtiny-ld-gold')
       if used_object_files:
         if [1 for fn in used_object_files if ',' in fn]:
           sys.stderr.write('fatal: comma specified in .o filename')

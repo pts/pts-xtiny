@@ -61,6 +61,10 @@ make it work with gcc-4.3, gcc-4.2 and gcc-4.1 if there is interest.
 You have to install the compiler separately. You can install it from package
 (e.g. `sudo apt-get install gcc' on Debian-ish systems).
 
+pts-xtiny includes a linker (ld.xtiny) from a recent GNU Binutils, so it
+doesn't matter which version of Binutils you have installed, except fro the
+assembler (as).
+
 Q3. Which architectures are supported?
 """"""""""""""""""""""""""""""""""""""
 i386 (x86, 32-bit) only. The generated binaries will run on amd64 (x86_64)
@@ -320,18 +324,19 @@ should have the same size but not exactly the same content (because sections
 are ordered differently by the linker). If you experience a discrepancy
 other than those below, please report an issue.
 
-Q28. Does pts-xtiny support __attribute__((constructor)) and
+Q28. Does pts-xtiny support initializers like __attribute__((constructor)) and
 __attribute__((destructor))?
 """"""""""""""""""""""""""""
 Yes. Even better: if these features are not used, they don't add overhead to
 the executable. (May other libcs get this wrong, they add overhead.)
 
-ld in GNU Binutils 2.20.1 is buggy: it removes constructors and destructors
-even without --gc-sections. If this affects you,
-upgrade your GNU Binutils to 2.24 (which is known to work).
+Note if you are using -mxtiny-ld=... with an old GNU ld. ld in GNU Binutils
+2.20.1 is buggy: it removes constructors and destructors even without
+--gc-sections. If this affects you, upgrade your GNU Binutils to 2.24 (which
+is known to work).
 
-(Please note that constructors and destructors are ignored with
--mno-xtiny-link.)
+(Please note that constructors and destructors are silently ignored with
+-mno-xtiny-wrap-linker.)
 
 Q29. Does pts-xtiny support atexit(3) or on_exit(3)?
 """"""""""""""""""""""""""""""""""""""""""""""""""""
@@ -352,7 +357,8 @@ __attribute__((destructor)), and the generated code is also shorter, so use:
 
 Q30. Does pts-xtiny support linking with GNU gold?
 """"""""""""""""""""""""""""""""""""""""""""""""""
-Yes, just specify `xtiny ... -mxtiny-gold'.
+Yes, just specify `xtiny ... -mxtiny-ld=gold' (or the full path to the gold
+executable).
 
 -mtiny-gcs (and -Wl,--gc-sections) works as expected with GNU gold.
 
@@ -396,6 +402,15 @@ function `puts') defined in xtiny.h will still work with -nodefaultlibs and
 Q34. How do I use a custom GNU ld binary with pts-xtiny?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""
 Specify `xtiny ... -mxtiny-ld=PATH_TO_LD'.
+
+If you specify `xtiny ... -mxtiny-ld=.xtiny', pts-xtiny will use the bundled
+linkr (ld.xtiny). This is the default behavior, because the system may have
+a very old GNU ld, which prevents some features (such as
+__attribue__((constructor))) from working.
+
+If you specify `xtiny ... -mxtiny-ld=.compiler', pts-xtiny will use whatever
+the specificed compiler would use by default. This is not recommended,
+because he system may have a very old GNU ld (see above).
 
 Technical notes
 ~~~~~~~~~~~~~~~
@@ -509,7 +524,8 @@ ld --verbose
 TODOs
 ~~~~~
 * TODO: Provide a non-inline version of puts in lib__xtiny.a.
-* TODO: Make -mxtiny-linker-script work with old ld: Ubuntu Lucid 2.20.1-system.20100303
+* TODO: Add assembler: xtiny.as.
+* TODO: Try again with pts-clang, add tutorial.
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
 * TODO: Add lib directory for possible additional user libraries, add it by default as -L
@@ -519,7 +535,7 @@ TODOs
 * TODO: Add support for debugging with gdb. -g shouldn't remove symbols
   etc., maybe shouldn't use the linker script.
 * TODO: Convert the xtiny tool from Python to .c.
-* TODO: Add C++ support, possibly for many kinds of initializers.
+* TODO: Add C++ support.
 * TODO: Make it work with clang: now segfault and large binary for
   pts-clang, and bad string constants for regular clang.
   clang-3.4.bin: error: unknown argument: '-mpreferred-stack-boundary=2'
