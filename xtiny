@@ -341,6 +341,10 @@ def wrap_linker(argv, prgdir):
   cmd = [None]
   argi = 1
   linkdirs = []
+  def add_linkdir(linkdir):
+    if linkdir.startswith('='):
+      linkdir = '/' + linkdir[1:]  # sysroot dir for xtiny is /
+    linkdirs.append('-L' + linkdir)
   is_verbose = False
   do_gc_sections = False
   has_custom_linker_script = False
@@ -397,7 +401,13 @@ def wrap_linker(argv, prgdir):
       cmd[1 : 1] = linkdirs
       linkdirs = []
     elif arg.startswith('-L'):
-      linkdirs.append(arg)
+      if arg == '-L' and argi < len(argv):  # Doesn't happen.
+        add_linkdir(argv[argi])
+        argi += 1
+      else:
+        add_linkdir(arg[2:])
+    elif arg.startswith('--library-path='):
+      add_linkdir(arg.split('=' , 1)[1])
     elif arg == '--gc-sections':
       do_gc_sections = True
       cmd.append(arg)
@@ -581,6 +591,7 @@ def main(argv):
   do_xtiny_gold = False
   do_defaultlibs = True
   do_startfiles = True
+  xtiny_ld = None
 
   argi = 2  # Skip xtiny (argv[0]) and the compiler.
   while argi < len(argv):
@@ -671,6 +682,9 @@ def main(argv):
       continue
     elif arg == '-mno-xtiny-gcs':
       do_xtiny_gc_sections = False
+      continue
+    elif arg.startswith('-mxtiny-ld='):
+      xtiny_ld = arg.split('=', 1)[1]
       continue
     elif arg == '-Wl,--gc-sections':
       has_gc_sections = True
@@ -781,8 +795,9 @@ def main(argv):
     if do_xtiny_gc_sections:
       cmd.append('-Wl,--gc-sections')
     if do_xtiny_wrap_linker:
-      ld_prog_path = get_bdir_prog_path(compiler, bdir, 'ld')
-      if is_clang and ld_prog_path.endswith('/clangld32/ld'):
+      if xtiny_ld is None:
+        xtiny_ld = get_bdir_prog_path(compiler, bdir, 'ld')
+      if is_clang and xtiny_ld.endswith('/clangld32/ld'):
         # pts-clang. Append .bin to the compiler name, because the wrapper
         # binary rejects the -B flag.
         #
@@ -793,8 +808,8 @@ def main(argv):
           # pts-clang uses the GNU gold linker, which ignores -T for the linker
           # script. Let's use the system ld instead.
           # TODO(pts): Use the built-in ld if available.
-          ld_prog_path = 'ld'
-      assert ',' not in ld_prog_path, ld_prog_path
+          xtiny_ld = 'ld'
+      assert ',' not in xtiny_ld, xtiny_ld
       if is_verbose:
         cmd.append('-Wl,--xtiny-ld-v')
       if not do_xtiny_sstrip:
@@ -809,8 +824,8 @@ def main(argv):
             '-Wl,--xtiny-ld-uof,%s,--xtiny-ld-uof-end' %
             ','.join(used_object_files))
       # This must be appended last because of --xtiny-run-ld.
-      cmd.extend(('-B', '%s/bdir' % progdir, '-Wl,--xtiny-run-ld',
-                  '-Wl,' + ld_prog_path))
+      cmd.extend(('-B', '%s/bdir' % progdir,
+                  '-Wl,--xtiny-run-ld,' + xtiny_ld))
   cmd.extend(args_kept)
   if do_link:
     if do_startfiles:

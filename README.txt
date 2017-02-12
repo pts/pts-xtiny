@@ -393,6 +393,10 @@ Please note that some functions (such as system call read(2) and library
 function `puts') defined in xtiny.h will still work with -nodefaultlibs and
 -nostdlib, because they are defined `static inline'.
 
+Q34. How do I use a custom GNU ld binary with pts-xtiny?
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Specify `xtiny ... -mxtiny-ld=PATH_TO_LD'.
+
 Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
