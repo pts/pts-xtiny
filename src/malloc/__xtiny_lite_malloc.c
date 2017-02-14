@@ -85,8 +85,8 @@ err:
 	return 0;
 }
 
-weak_alias(__xtiny_lite_malloc, malloc);
-weak_alias(__xtiny_lite_malloc, __malloc0);
+weak_alias(__xtiny_lite_malloc, __xtiny_malloc);
+weak_alias(__xtiny_lite_malloc, __xtiny_malloc0);
 
 #if 0
 void *malloc(size_t n) {

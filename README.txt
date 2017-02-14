@@ -265,6 +265,11 @@ See https://github.com/pts/tiny-ssh-keygen-ed25519 , which implements
 ssh-keygen (SSH keypair generator) for ed25519 keys. Compiled executable
 size is 7568 bytes.
 
+See https://github.com/pts/pts-clang-xstatic/blob/master/xstatic.c (and also
+other .c files in this repository), which implements a trampoline wrapper
+for running gcc with specific flags for linking against uClibc. Compiled
+executable size is 9052 bytes.
+
 See https://github.com/pts/pts-tiny-7z-sfx , which implements a .7z archive
 extractor and SFX. It doesn't use pts-xtiny directly, but features of
 pts-xtiny are inlined to its c-minidiet.sh and minidiet/* files. Compiled
@@ -413,6 +418,34 @@ If you specify `xtiny ... -mxtiny-ld=.compiler', pts-xtiny will use whatever
 the specificed compiler would use by default. This is not recommended,
 because he system may have a very old GNU ld (see above).
 
+Q35. Does pts-xtiny support malloc, free, realloc and calloc?
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+To get them (exept for realloc), specify `xtiny ... -mxtiny-forward-malloc'.
+
+Use realloc_grow instead of realloc. You'll need to specify the old block
+size as well.
+
+Please note that free() is a no-op, and memory once allocated and free()ed
+will never be reused for subsequent allocations.
+
+You can use about 1.2 GB of heap by default. To get more, specify something
+like `xtiny ... -mxtiny-forward-malloc=2100000000'. Anything much larger than
+2.1 GB won't work. Anything larger than 0x7fffffff won't even compile.
+
+Alternatively, if you don't want to specify -mxtiny-forward-alloc, you can
+add this to your .c file:
+
+  #ifndef __XTINY_FORWARD_MALLOC__
+  #define __XTINY_FORWARD_MALLOC__ 1200000000  /* Almost 1.2 GB. */
+  extern char __forward_malloc_heap[];
+  char *__forward_malloc_heap_end =
+      __forward_malloc_heap + __XTINY_FORWARD_MALLOC__;
+  #endif
+  #include <xtiny.h>
+
+If you have multiple .c files, add `char *__forward_malloc_heap_end = ...'
+to exactly one of them.
+
 Technical notes
 ~~~~~~~~~~~~~~~
 Useful links
@@ -515,8 +548,8 @@ About symbol lookup order in .o and .a files
 
 About malloc
 """"""""""""
-The malloc implementation in pts-xtiny is based on musl-1.1.16/src/malloc,
-but in pts-xtiny it's single-threaded.
+The tiny malloc implementation in pts-xtiny is based on
+musl-1.1.16/src/malloc, but in pts-xtiny it's single-threaded.
 
 How to print the active linker script
 """""""""""""""""""""""""""""""""""""

@@ -80,9 +80,27 @@ ar crD ../lib__xtiny_exit.a "${@/%.*/.o}"
 cd ..
 
 ln -s ../include
+
 cp ../xtiny ./xtiny
 cd malloc
-C_FILES='__xtiny_lite_malloc.c calloc.c'
+# calloc.c uses malloc.
+# realloc_grow.c uses malloc and free.
+C_FILES='__forward_malloc.c __forward_malloc_free.c __xtiny_lite_malloc.c calloc.c realloc_grow.c'
+#   -- not production-ready yet.
+set -- $C_FILES
+rm -f *.o
+# SUXX: The number NNNN in heap_end.NNNN may still change.
+../xtiny gcc $GCCDETFLAGS -s -O2 -W -Wall -Wextra -Werror -c "$@"
+ar crD ../lib__xtiny.a "${@/%.*/.o}"
+cd ..
+
+cp ../xtiny ./xtiny
+cd misc
+C_FILES='
+    strdup.c
+    strstr.c
+    getenv.c
+'
 set -- $C_FILES
 rm -f *.o
 # SUXX: The number NNNN in heap_end.NNNN may still change.

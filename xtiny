@@ -582,6 +582,7 @@ def main(argv):
   do_defaultlibs = True
   do_startfiles = True
   xtiny_ld = None
+  forward_malloc_heap_size = None
 
   argi = 2  # Skip xtiny (argv[0]) and the compiler.
   while argi < len(argv):
@@ -670,6 +671,15 @@ def main(argv):
     elif arg.startswith('-mxtiny-ld='):
       xtiny_ld = arg.split('=', 1)[1]
       continue
+    elif arg == '-mxtiny-forward-malloc':
+      forward_malloc_heap_size = 1200000000  # 1.2 GB.
+      continue
+    elif arg == '-mno-xtiny-forward-malloc':
+      forward_malloc_heap_size = 0
+      continue
+    elif arg.startswith('-mxtiny-forward-malloc='):
+      forward_malloc_heap_size = int(arg.split('=', 1)[1])
+      continue
     elif arg == '-Wl,--gc-sections':
       has_gc_sections = True
     elif arg == '-nostdlib':
@@ -709,6 +719,8 @@ def main(argv):
     cmd.append('-D__XTINY__')
     if do_defaultlibs:
       cmd.append('-D__XTINY_DEFAULTLIBS__')
+    if forward_malloc_heap_size is not None:
+      cmd.append('-D__XTINY_FORWARD_MALLOC__=%s' % forward_malloc_heap_size)
   if is_compiling:
     if is_clang:
       # To avoid this (which only appears with `clang -c' and `clang -S':
@@ -807,6 +819,9 @@ def main(argv):
         cmd.append('-Wl,--xtiny-ld-v')
       if not do_xtiny_sstrip:
         cmd.append('-Wl,--xtiny-ld-noss')
+      if forward_malloc_heap_size is not None:
+        cmd.append('-Wl,--defsym=__forward_malloc_heap_end='
+                   '__forward_malloc_heap+%s' % forward_malloc_heap_size)
       if used_object_files:
         if [1 for fn in used_object_files if ',' in fn]:
           sys.stderr.write('fatal: comma specified in .o filename')

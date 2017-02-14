@@ -711,7 +711,17 @@ __asm__ __volatile__ ("push %%ebp ; movl %%eax,%%ebp ; movl %1,%%eax ; int $0x80
 __syscall_return(type,__res); \
 }
 
+/* gcc-4.4 needs these forward-declarations */
+struct stat;
+struct stat64;
+struct utsname;
+
+/* --- System calls. */
+
 _syscall1_nomemory(int,close,int,fd)
+/* libc also allows a 2-argument open, but we don't (for tiny output).
+ * Just specify mode == 0.
+ */
 _syscall3(int,open,const char *,pathname,int,flags,mode_t,mode)
 _syscall1(int,chdir,const char*,dir)
 _syscall1(int,chroot,const char*,dir)
@@ -739,10 +749,19 @@ _syscall2_nomemory(int,fchmod,int,fd,mode_t,mode)
 _syscall2(int,gettimeofday,struct timeval*,tv,struct timezone*,tz)
 _syscall3_nomemory(off_t,lseek,int,fd,off_t,offset,int,whence)
 _syscall2(int,lstat,const char*,path,struct stat*,buf)
+_syscall2(int,stat,const char*,path,struct stat*,buf)
 _syscall2(int,mkdir,const char*,pathname,mode_t,mode)
 _syscall2(int,symlink,const char*,oldpath,const char*,newpath)
 _syscall1(int,unlink,const char*,pathname)
 _syscall2(int,utimes,const char*,filename,const struct timeval*,times)
+_syscall3(ssize_t,readlink,const char*,path,char*,buf,size_t,bufsiz)
+_syscall3(pid_t,waitpid,pid_t,pid,int*,status,int,options);
+_syscall0_nomemory(pid_t,fork)
+_syscall1(int,uname,struct utsname*,buf)
+_syscall2(int,lstat64,const char*,path,struct stat64*,buf)
+_syscall2(int,stat64,const char*,path,struct stat64*,buf)
+
+/* --- System call convenience functions. */
 
 /* Runs destructors, but no atexit, no stdout flush, no thread sync. */
 extern void exit(int __exitcode) __asm__("__xtiny_exit_with_fini") __attribute__((noreturn, nothrow, regparm(1)));
@@ -753,6 +772,12 @@ extern void _Exit(int __exitcode) __asm__("__xtiny_exit") __attribute__((noretur
 
 static __inline__ int setgroups(int __s, const gid_t *__l) {
   return sys_setgroups32(__s, __l);
+}
+__attribute__((__nothrow__)) static __inline__ off64_t lseek64(
+    int fd, off64_t offset, int whence) {
+  off64_t result;
+  return _llseek(fd, offset >> 32, (off_t)offset, &result, whence) == 0 ?
+      result : -1;
 }
 
 /* TODO(pts): Which functions should we add __attribute__leaf to? */
@@ -837,6 +862,38 @@ extern int strncmp(__const char *__s1, __const char *__s2, size_t __n) __attribu
 extern char *strncpy(char *__restrict __dest, __const char *__restrict __src, size_t __n) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__nonnull__(1, 2)));
 extern char *strrchr(__const char *__s, int __c) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
 
+/* Other library functions. */
+char *getenv(const char *name);
+char *strdup(const char *s) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(1)));
+char *strstr(const char *haystack, const char *needle) __attribute__((__nothrow__)) __attribute__leaf __attribute__((__pure__)) __attribute__((__nonnull__(2)));
+void *calloc(size_t nmemb, size_t size);
+/* Not a standard libc function, this is an xtiny-specific extension. */
+void *realloc_grow(void *ptr, size_t old_size, size_t new_size);
+
+#ifdef __XTINY_FORWARD_MALLOC__
+void *malloc(size_t size) __asm__("__forward_malloc") __attribute__((malloc));
+void *malloc0(size_t size) __asm__("__forward_malloc") __attribute__((malloc));
+/*extern void free(void *ptr) __asm__("__forward_malloc_free");*/
+/*#define free __forward_malloc_free*/
+__attribute__((always_inline)) static __inline__ void free(void *ptr) {
+  (void)ptr;
+}
+char __forward_malloc_heap[__XTINY_FORWARD_MALLOC__]
+    __attribute__((aligned(8)));
+#if 0  /* This is not needed, `xtiny' sets up a `-Wl,--defsym=...' instead. */
+char *__forward_malloc_heap_end = __forward_malloc_heap + sizeof __forward_malloc_heap;
+#endif
+#endif
+
+#if 0  /* Not defined in general. */
+void *malloc(size_t size) __attribute__((malloc));
+void *malloc0(size_t size) __attribute__((malloc));  /* Like malloc, but initialize *result to 0. */
+void free(void *ptr);
+void *realloc(void *ptr, size_t size);
+#endif
+
+
+
 #define ATEXIT_MAX 1
 /* Only one hook registration, subsequent ones return -1 (error).
  * The hook will get called befire __attribute__((destructor)) hooks.
@@ -846,8 +903,6 @@ extern int atexit(void (*function)(void)) __attribute__((regparm(1), nothrow));
 extern void abort() __attribute__((noreturn, nothrow));
 
 char **environ __asm__("__xtiny_environ");
-
-/* Like malloc, but sets bytes to 0 before returning. */
 
 /* --- puts
  *
@@ -907,6 +962,37 @@ static __inline__ int puts(const char *__s) {
 #define SIGRTMIN	32
 #define SIGRTMAX	_NSIG
 
+/* --- */
+
+#define S_IFMT  0170000
+#define S_IFDIR 0040000
+#define S_IFCHR 0020000
+#define S_IFBLK 0060000
+#define S_IFREG 0100000
+#define S_IFIFO 0010000
+#define S_IFLNK 0120000
+#define S_IFSOCK 0140000
+
+#define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
+#define S_ISCHR(mode)  (((mode) & S_IFMT) == S_IFCHR)
+#define S_ISBLK(mode)  (((mode) & S_IFMT) == S_IFBLK)
+#define S_ISREG(mode)  (((mode) & S_IFMT) == S_IFREG)
+#define S_ISFIFO(mode) (((mode) & S_IFMT) == S_IFIFO)
+#define S_ISLNK(mode)  (((mode) & S_IFMT) == S_IFLNK)
+#define S_ISSOCK(mode) (((mode) & S_IFMT) == S_IFSOCK)
+
+/* --- */
+
+#define WNOHANG    1
+#define WUNTRACED  2
+
+#define WEXITSTATUS(s) (((s) & 0xff00) >> 8)
+#define WTERMSIG(s) ((s) & 0x7f)
+#define WSTOPSIG(s) WEXITSTATUS(s)
+#define WIFEXITED(s) (!WTERMSIG(s))
+#define WIFSTOPPED(s) ((short)((((s)&0xffff)*0x10001)>>8) > 0x7f00)
+#define WIFSIGNALED(s) (((s)&0xffff)-1U < 0xffu)
+
 /* --- structs */
 
 struct stat {
@@ -931,6 +1017,30 @@ struct stat {
   unsigned long int __unused4;
   unsigned long int __unused5;
 };
+
+struct stat64 {
+  __extension__  unsigned long long st_dev;
+  unsigned char  __pad0[4];
+  unsigned long  __st_ino;
+  unsigned int   st_mode;
+  unsigned int   st_nlink;
+  unsigned long  st_uid;
+  unsigned long  st_gid;
+  __extension__  unsigned long long st_rdev;
+  unsigned char  __pad3[4];
+  __extension__  off_t  st_size;
+  unsigned long  st_blksize;
+  /* Number 512-byte blocks allocated. */
+  __extension__  unsigned long long st_blocks;
+  unsigned long  st_atime;
+  unsigned long  st_atime_nsec;
+  unsigned long  st_mtime;
+  unsigned int   st_mtime_nsec;
+  unsigned long  st_ctime;
+  unsigned long  st_ctime_nsec;
+  __extension__  unsigned long long st_ino;
+  unsigned char __pad_end[8];  /* Without this lstat64 seems to clobber the stack after this. */
+}  __attribute__((packed));
 
 struct utsname {
   char sysname[65];
