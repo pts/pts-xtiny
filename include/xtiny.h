@@ -993,42 +993,47 @@ static __inline__ int puts(const char *__s) {
 #define WIFSTOPPED(s) ((short)((((s)&0xffff)*0x10001)>>8) > 0x7f00)
 #define WIFSIGNALED(s) (((s)&0xffff)-1U < 0xffu)
 
-/* --- structs */
+/* --- structs
+ *
+ * Please note that struct stat etc. defined in
+ * linux-4.9.7/include/uapi/asm-generic/stat.h
+ * is irrelevant and incorrect.
+ */
 
+/* From linux-4.9.7/arch/x86/include/uapi/asm/stat.h */
 struct stat {
-  dev_t st_dev;
-  unsigned short int __pad1;
-  ino_t st_ino;
-  mode_t st_mode;
-  nlink_t st_nlink;
-  uid_t st_uid;
-  gid_t st_gid;
-  dev_t st_rdev;
-  unsigned short int __pad2;
-  off_t st_size;
-  blksize_t st_blksize;
-  blkcnt_t st_blocks;
-  time_t st_atime;
-  unsigned long int st_atimensec;
-  time_t st_mtime;
-  unsigned long int st_mtimensec;
-  time_t st_ctime;
-  unsigned long int st_ctimensec;
-  unsigned long int __unused4;
-  unsigned long int __unused5;
+  unsigned long  st_dev;
+  unsigned long  st_ino;
+  unsigned short st_mode;
+  unsigned short st_nlink;
+  unsigned short st_uid;
+  unsigned short st_gid;
+  unsigned long  st_rdev;
+  unsigned long  st_size;
+  unsigned long  st_blksize;
+  unsigned long  st_blocks;
+  unsigned long  st_atime;
+  unsigned long  st_atime_nsec;
+  unsigned long  st_mtime;
+  unsigned long  st_mtime_nsec;
+  unsigned long  st_ctime;
+  unsigned long  st_ctime_nsec;
+  unsigned long  __unused4;
+  unsigned long  __unused5;
 };
 
+/* Baded on linux-4.9.7/arch/x86/include/uapi/asm/stat.h */
 struct stat64 {
   __extension__  unsigned long long st_dev;
   unsigned char  __pad0[4];
-  unsigned long  __st_ino;
+  unsigned long  __old_st_ino;
   unsigned int   st_mode;
   unsigned int   st_nlink;
   unsigned long  st_uid;
   unsigned long  st_gid;
   __extension__  unsigned long long st_rdev;
   unsigned char  __pad3[4];
-  __extension__  off_t  st_size;
+  __extension__  unsigned long long st_size;
   unsigned long  st_blksize;
   /* Number 512-byte blocks allocated. */
   __extension__  unsigned long long st_blocks;
@@ -1039,8 +1044,7 @@ struct stat64 {
   unsigned long  st_ctime;
   unsigned long  st_ctime_nsec;
   __extension__  unsigned long long st_ino;
-  unsigned char __pad_end[8];  /* Without this lstat64 seems to clobber the stack after this. */
-}  __attribute__((packed));
+};
 
 struct utsname {
   char sysname[65];
