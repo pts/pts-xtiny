@@ -45,7 +45,7 @@ GCCDETFLAGS=-frandom-seed=9853
 mkdir obj__xtiny
 cd obj__xtiny
 set -- $FILES_S_IN_ORDER
-gcc $GCCDETFLAGS -m32 -c "${@/#/..\/}"
+gcc $GCCDETFLAGS -m32 -c "${@/#/../}"
 rm -f ../lib__xtiny.a
 set -- "${@#*/}"
 # Automatic ranlib.
@@ -62,7 +62,7 @@ for VV in {i,n}{f,n}; do
   mkdir obj__xtiny_start_"$VV"
   cd obj__xtiny_start_"$VV"
   set -- $START_FILES_S_IN_ORDER
-  gcc $GCCDETFLAGS -m32 -c $DEFINES "${@/#/..\/}"
+  gcc $GCCDETFLAGS -m32 -c $DEFINES "${@/#/../}"
   rm -f ../lib__xtiny_start_"$VV".a
   set -- "${@#*/}"
   # Automatic ranlib.
@@ -73,7 +73,7 @@ done
 mkdir obj__xtiny_exit
 cd obj__xtiny_exit
 set -- $EXIT_FILES_S_IN_ORDER
-gcc -m32 -c "${@/#/..\/}"  # No -DDO_INIT_ARRAY, no -DDO_FINI_ARRAY.
+gcc -m32 -c "${@/#/../}"  # No -DDO_INIT_ARRAY, no -DDO_FINI_ARRAY.
 rm -f ../lib__xtiny_exit.a
 set -- "${@#*/}"
 ar crD ../lib__xtiny_exit.a "${@/%.*/.o}"
