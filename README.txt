@@ -557,6 +557,8 @@ ld --verbose
 
 TODOs
 ~~~~~
+* TODO: Diagnose file size anomalies in TODO in
+  https://github.com/pts/pts-clang-xstatic/blob/master/mktrampolines-minidiet
 * TODO: Provide a non-inline version of puts in lib__xtiny.a.
 * TODO: Try again with pts-clang, add tutorial.
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
