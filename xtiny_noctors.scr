@@ -1,0 +1,172 @@
+/*
+ * xtiny.scr -- a GNU ld(1) linker script for emitting small ELF binaries for C programs
+ * by pts@fazekas.hu at Sun Oct 19 13:06:04 CEST 2014
+ *
+ * * GNU ld(1) and a Linux i386 system is required
+ * * Usage: gcc -m32 -Os -nostdlib -W,-T,tiny.scr src*.c
+ * * C++ not supported (because of constructor etc. sections)
+ * * You need to define your own _start function (not a _main).
+ * * No need for ALIGN(4) on .data, .rodata, .bss etc., because indivitual .o
+ *   files already specify alignment for the variables they define.
+ */
+
+OUTPUT_FORMAT(binary)
+TARGET(elf32-i386)  /* Input (.o) format. */
+/* If we specify TARGET(elf32-little) instead of TARGET(elf32-i386),
+ * and move -T earlier than the .o files in the cmdline, we'd get error:
+ * ld: ....o: Relocations in generic ELF (EM: 3)
+ */
+ENTRY(_start)  /* Without this _start won't be loaded from an .a file. */
+
+SECTIONS {
+  __myorg = 0x08048000;  /* Moves only relocation offsets. */
+  . = __myorg;
+  /* ABSOLUTE(.) is necessary instead of . inside a section for ld. */
+  __ehdr = ABSOLUTE(.); /* __ehdr: ; Elf32_Ehdr */
+  . : {
+    BYTE(0x7F) BYTE(69) BYTE(76) BYTE(70) BYTE(1) BYTE(1) BYTE(1)
+    /* ^^^    db      0x7F, "ELF", 1, 1, 1            ;   0 e_ident */
+    BYTE(3) /* 0=SYSV 3=GNU/Linux */
+    LONG(0) LONG(0)
+    /* ^^^   times 8 db      0 */
+    SHORT(2) SHORT(3)
+    /* ^^^    dw      2, 3                            ;   16 e_type, e_machine */
+    LONG(1)
+    /* ^^^    dd      1                               ;   20 e_version */
+    LONG(_start)
+    /* ^^^    dd      _start                          ;   24 e_entry */
+    LONG(__phdr - __myorg)
+    /* ^^^    dd      __phdr - $$                     ;   28 e_phoff */
+    LONG(0)
+    /* ^^^    dd      0                               ;   32 e_shoff */
+    LONG(0)
+    /* ^^^    dd      0                               ;   36 e_flags */
+    SHORT(__ehdrsize) SHORT(__phdrsize)
+    /* ^^^    dw      __ehdrsize, __phdrsize          ;   40 e_ehsize, e_phentsize */
+    SHORT(1) SHORT(40) SHORT(0) SHORT(0)
+    /* ^^^    dw      1, 40, 0, 0                     ;   e_phnum, e_shentsize, e_shnum, e_shstrndx */
+    __ehdrsize = ABSOLUTE(.) - __ehdr; /* __ehdrsize equ $ - __ehdr; */
+    __phdr = ABSOLUTE(.); /* ; Elf32_Phdr */
+    LONG(1) LONG(0) LONG(__myorg) LONG(__myorg)
+    /* ^^^    dd      1, 0, $$, $$                    ;   p_type, p_offset, p_vaddr, p_paddr */
+    LONG(__p_filesz - __myorg)
+    /* ^^^    dd      __p_filesz - __myorg            ;   p_filesz */
+    LONG(__p_memsz - __myorg)
+    /* ^^^    dd      __p_memsz - __myorg             ;   p_memsz */
+    LONG(7)
+    /* ^^^    dd      7                               ;   p_flags (1=executable 2=writable 4=readable) */
+    LONG(4)
+    /* ^^^    dd      4                               ;   p_align, same as ld -N */
+    __phdrsize = ABSOLUTE(.) - __phdr; /* __phdrsize equ $ - __phdr */
+    /* _start is defined in _start.o (compiled from _start.s) in lib__xtiny.a */
+  }
+  PROVIDE(__executable_start = ABSOLUTE(.));
+  .text : {
+    *(.text)  /* Contains all other functions. */
+    *(.text.unlikely .text.*_unlikely)
+    *(.text.exit .text.exit.*)
+    *(.text.startup .text.startup.*)
+    *(.text.hot .text.hot.*)
+    *(.text .stub .text.* .gnu.linkonce.t.*)
+    *(.text.*)  /* text.startup contains main(). */
+  }
+  PROVIDE(__etext = ABSOLUTE(.));
+  PROVIDE(_etext = ABSOLUTE(.));
+  PROVIDE(etext = ABSOLUTE(.));
+  /* Thread Local Storage sections supported but not useful yet.
+   * We don't print an error, because it's hard to create these accidentally.
+   */
+  .tdata : /* ALIGN(4) SUBALIGN(4) */ {
+    *(.tdata .tdata.* .gnu.linkonce.td.*)
+  }
+  .tbss : /* ALIGN(4) SUBALIGN(4) */ {
+    *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon)
+  }
+  /* We align .data, .rodata and .bss to 4-byte boundary for faster loads on
+   * the data bus.
+   */
+  .rodata : /* ALIGN(4) SUBALIGN(4) */ {
+    *(.rodata .rodata.* .gnu.linkonce.r.*)
+  }
+  .rodata1 : /* ALIGN(4) SUBALIGN(4) */ {
+    /* Never seen it, but mentioned in default.scr. */
+    *(.rodata1)
+  }
+  .data : /* ALIGN(4) SUBALIGN(4) */ {
+    *(.data .data.* .gnu.linkonce.d.*)  /* Example: int a = 1; */
+  }
+  .data1 : /* ALIGN(4) SUBALIGN(4) */ {
+    /* Never seen it, but mentioned in https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/specialsections.html */
+    *(.data1)
+  }
+  .init : ALIGN(4) SUBALIGN(4) {
+    *(.init)
+    ASSERT(0, "Old-style constructors (.init) are not supported.");
+  }
+  .fini : ALIGN(4) SUBALIGN(4) {
+    *(.fini)
+    ASSERT(0, "Old-style destructors (.fini) are not supported.");
+  }
+  .preinit_array : ALIGN(4) SUBALIGN(4) {
+    *(.preinit_array)
+    ASSERT(0, "Old-style constructors (.preinit_array) are not supported.");
+  }
+  .init_array : ALIGN(4) SUBALIGN(4) {
+    *(.init_array.* .init_array)
+    ASSERT(0, "New-style constructors (.init_array) are not supported.");
+  }
+  .fini_array : ALIGN(4) SUBALIGN(4) {
+    *(.fini_array.* .fini_array)
+    ASSERT(0, "New-style destructors (.fini_array) are not supported.");
+  }
+  .ctors : ALIGN(4) SUBALIGN(4) {
+    *(.ctors.* .ctors)
+    ASSERT(0, "New-style constructors (.ctors) are not supported.");
+  }
+  .dtors : ALIGN(4) SUBALIGN(4) {
+    *(.dtors.* .dtors)
+    ASSERT(0, "New-style destructors (.dtors) are not supported.");
+  }
+  __p_filesz = .;
+  PROVIDE(edata = ABSOLUTE(.));
+  PROVIDE(_edata = ABSOLUTE(.));
+  PROVIDE(__edata = ABSOLUTE(.));
+  __bss_start = ABSOLUTE(.);
+  /* For some reason the contents of this secion will be omitted from the
+   * file. Probably because do real data bytes are added here.
+   */
+  .bss : /* ALIGN(4) SUBALIGN(4) */ {
+    /* errno is defined in __xtiny_errno.o in lib__xtiny.a. We could define it
+     * here: `__xtiny_errno = ABSOLUTE(.); . += 4;', but that would make the
+     * symbol unavailable when linking with gcc. Similarly for environ.
+     */
+    *(.dynbss)
+    *(.bss .bss.* .gnu.linkonce.b.*) /* Example: int a = 0; // 0 is special. */
+    *(COMMON)  /* Example: int a; */
+  }
+  . = ALIGN(32 / 8);  /* For compatibility with ld -N. */
+  _end = .; PROVIDE (end = .);
+  /DISCARD/ : /* ALIGN(1) SUBALIGN(1) */ {
+    *(.note.GNU-stack) *(.gnu_debuglink) *(.gnu.lto_*)
+    *(.note.gnu.gold-version)  /* Not in .o files, just to be sure. */
+    *(.note.gnu.build-id)  /* Not in .o files, just to be sure. */
+    *(.note.ABI-tag)
+    *(.eh_frame .eh_frame_hdr)  /* CFI for the debugger (gdb). */
+    *(.jcr)  /* Java class registrations. */
+    *(.got.plt)
+    *(.comment) *(.note)
+    *(.debug .line .debug_*)  /* DWARF debug, by `gcc -g'. */
+    *(.stab .stabstr .stab.*)  /* Stabs debug. */
+    /* No difference, link warnings still displayed. */
+    *(.gnu.warning .gnu.warning.*)
+    *(.gnu.version*)
+  }
+  /* Without this block ld will append all such sections to the target
+   * executable. We don't know how to handle them, so let's not append them.
+   */
+  .unsupported : /* ALIGN(1) SUBALIGN(1) */ {
+    *(*)
+    ASSERT(0, "Found non-empty unsupported section in ELF inputs.");
+  }
+  __p_memsz = .;
+}
