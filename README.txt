@@ -277,7 +277,7 @@ executable size is 9052 bytes.
 See https://github.com/pts/pts-tiny-7z-sfx , which implements a .7z archive
 extractor and SFX. It doesn't use pts-xtiny directly, but features of
 pts-xtiny are inlined to its c-minidiet.sh and minidiet/* files. Compiled
-executable size is 16552 bytes.
+executable size is 24220 bytes; when compressed with UPX, it's 16552 bytes.
 
 Q22. Does pts-xtiny support -Wl,--gc-sections?
 """"""""""""""""""""""""""""""""""""""""""""""
