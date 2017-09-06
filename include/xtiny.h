@@ -770,6 +770,7 @@ _syscall2(int,stat64,const char*,path,struct stat64*,buf)
  * error: function declared with regparm(1) attribute was previously declared without the regparm attribute.
  */
 #define exit  __clang__exit__
+#define _exit  __clang___exit__
 #define _Exit __clang___Exit__
 #endif
 
