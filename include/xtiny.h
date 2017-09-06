@@ -748,6 +748,7 @@ _syscall2(int,chmod,const char*,path,mode_t,mode)
 _syscall2_nomemory(int,fchmod,int,fd,mode_t,mode)
 _syscall2(int,gettimeofday,struct timeval*,tv,struct timezone*,tz)
 _syscall3_nomemory(off_t,lseek,int,fd,off_t,offset,int,whence)
+_syscall5(int,_llseek,int,fd,int,offset_high,int,offset_low,loff_t*,result,int,whence);
 _syscall2(int,lstat,const char*,path,struct stat*,buf)
 _syscall2(int,stat,const char*,path,struct stat*,buf)
 _syscall2(int,mkdir,const char*,pathname,mode_t,mode)
