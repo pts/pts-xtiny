@@ -261,6 +261,10 @@ See https://github.com/pts/pts-zcat/blob/master/compile_xtiny.sh , which
 implements a .gz, .zip and Flate decompression filter (stdin-to-stdout).
 Compiled executable size is 4600 bytes.
 
+See https://github.com/pts/pts-line-bisect/blob/master/pts_lbsearch.c ,
+which implements binary search for sorted on-disk text files, with a smart
+and optimized input buffering. Compiled executable size is 6063 bytes.
+
 See https://github.com/pts/tiny-ssh-keygen-ed25519 , which implements
 ssh-keygen (SSH keypair generator) for ed25519 keys. Compiled executable
 size is 7568 bytes.
@@ -594,5 +598,7 @@ TODOs
   (which is aligned to 4 bytes with 0x66, 0x90 for -mno-xtiny-linker-script).
 * TODO: copy some gcc flags from musl: gcc -m32 -std=c99 -nostdinc -ffreestanding -fexcess-precision=standard -frounding-math -D_XOPEN_SOURCE=700 -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections -march=i486 -mtune=generic -Werror=implicit-function-declaration -Werror=implicit-int -Werror=pointer-sign -Werror=pointer-arith
 * TODO: use malloc_lite (and calloc_lite) if no free
+* TODO: why is pts_lbsearch.xtiny (in pts-line-bisect) 6888 bytes when
+  compiled with clang-4.4, and only 6063 bytes when compiled with gcc-4.8?
 
 __END__

@@ -764,6 +764,15 @@ _syscall2(int,stat64,const char*,path,struct stat64*,buf)
 
 /* --- System call convenience functions. */
 
+#ifdef __clang__
+/* clang 3.4 ignores -fno-builtin-_Exit etc. specified by xtiny.
+ * The fix below is to prevent the clang error:
+ * error: function declared with regparm(1) attribute was previously declared without the regparm attribute.
+ */
+#define exit  __clang__exit__
+#define _Exit __clang___Exit__
+#endif
+
 /* Runs destructors, but no atexit, no stdout flush, no thread sync. */
 extern void exit(int __exitcode) __asm__("__xtiny_exit_with_fini") __attribute__((noreturn, nothrow, regparm(1)));
 
