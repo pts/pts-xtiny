@@ -993,6 +993,23 @@ static __inline__ int puts(const char *__s) {
 #define WIFSTOPPED(s) ((short)((((s)&0xffff)*0x10001)>>8) > 0x7f00)
 #define WIFSIGNALED(s) (((s)&0xffff)-1U < 0xffu)
 
+/* --- */
+
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
+/* --- */
+
+#define EXIT_SUCCESS 0
+#define EXIT_FAILURE 1
+
+/* --- */
+
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
 /* --- structs
  *
  * Please note that struct stat etc. defined in
