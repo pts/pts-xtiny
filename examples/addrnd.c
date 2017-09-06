@@ -16,7 +16,7 @@
  * it's used with parameters {j = 24, k = 55}.
  */
 
-#if __XTINY__
+#ifdef __XTINY__
 #include <xtiny.h>
 #else
 #include <fcntl.h>
@@ -27,8 +27,8 @@
 #endif
 
 /* The real abort() call adds more dependencies, e.g. on kill(). */
-static void __attribute__((__noreturn__)) my_abort(void) {
-  sys_exit(104);
+static __inline__ void __attribute__((__noreturn__)) my_abort(void) {
+  _exit(104);  /* This call is smaller than the inlined sys_exit(104) call. */
 }
 
 int main(int argc, char **argv) {
@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
   (void)argc;
   fd = open(argv[1] != NULL ? argv[1] : "/dev/urandom", O_RDONLY, 0);
   if (fd < 0) my_abort();
+  /* By commenting out the next line, we can make the file 5 bytes smaller. */
   y[0] = 0;  /* Pacify gcc-4.4, it thinks y is used uninitialized. */
   for (j = 0; j < 55 * 4; j += k) {  /* Read 55 * 4 bytes of random seed. */
     k = read(fd, j + (char*)y, 55 * 4 - j);

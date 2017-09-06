@@ -250,7 +250,7 @@ library functions are not optimized for speed.
 Q21. Is there a non-trivial example program using pts-xtiny?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 See examples/addrnd.c, which implements a Lagged Fibonacci generator,
-writing random bytes to its stdout. Compiled executable size is 560 bytes.
+writing random bytes to its stdout. Compiled executable size is 436 bytes.
 
 See examples/multi_trampoline.c, which prepares the Linux process state
 (chdir(), chroot(), umask(), setreuid(), environ) and then runs another
