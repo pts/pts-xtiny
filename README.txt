@@ -370,7 +370,7 @@ Q30. Does pts-xtiny support linking with GNU gold?
 Yes, just specify `xtiny ... -mxtiny-ld=gold' (or the full path to the gold
 executable).
 
--mtiny-gcs (and -Wl,--gc-sections) works as expected with GNU gold.
+-mxtiny-gcs (and -Wl,--gc-sections) works as expected with GNU gold.
 
 The output file should be of the same size with our without GNU gold, and it
 should be byte-by-byte identical. If you experience a discrepancy, please
