@@ -714,6 +714,8 @@ __syscall_return(type,__res); \
 /* gcc-4.4 needs these forward-declarations */
 struct stat;
 struct stat64;
+struct timeval;
+struct timezone;
 struct utsname;
 
 /* --- System calls. */
