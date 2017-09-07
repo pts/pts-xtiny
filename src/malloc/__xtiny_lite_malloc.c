@@ -1,3 +1,5 @@
+/* based on musl-1.1.16/src/malloc, but single-threaded */
+
 #include <xtiny.h>
 #define BRK(n) sys_brk((void*)(n))
 #undef weak_alias

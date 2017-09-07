@@ -81,8 +81,8 @@ Linux only, and also FreeBSD in Linux emulation mode.
 pts-xtiny is not able to produce .exe files (for Windows) or macOS
 executables.
 
-Q5. Do the executables link against glibc, eglibc, uClibc, dietlibc?
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Q5. Do the executables link against glibc, eglibc, uClibc, dietlibc, musl?
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 No, they link statically against the pts-xtiny libc only, which is included
 in the pts-xtiny distribution. At runtime no external files are necessary to
 run the executables.
@@ -233,8 +233,8 @@ You can copy some of the command-line flags `xtiny' passes to gcc and ld.
 
 You can use the linker script xtiny.scr from pts-xtiny. Just append
 `-Wl,-T,.../xtiny.scr' to your `gcc' command-line using another libc (such
-as dietlibc or uClibc), and benefit from some extra stripping of unneeded
-symbols.
+as dietlibc, musl or uClibc), and benefit from some extra stripping of
+unneeded symbols.
 
 Q20. Are executables created with pts-xtiny very fast?
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -550,21 +550,15 @@ About symbol lookup order in .o and .a files
 * for circular dependencies, specify `-\( libA.a libB.a -\)' or (only if 1
   layer of dependency), `libA.a libB.a libA.a'.
 
-About malloc
-""""""""""""
-The tiny malloc implementation in pts-xtiny is based on
-musl-1.1.16/src/malloc, but in pts-xtiny it's single-threaded.
-
 How to print the active linker script
 """""""""""""""""""""""""""""""""""""
 ld --verbose
 
 TODOs
 ~~~~~
-* TODO: Diagnose file size anomalies in TODO in
+* TODO: Anomaly: Diagnose file size anomalies in TODO in
   https://github.com/pts/pts-clang-xstatic/blob/master/mktrampolines-minidiet
 * TODO: Provide a non-inline version of puts in lib__xtiny.a.
-* TODO: Try again with pts-clang, add tutorial.
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
 * TODO: Add lib directory for possible additional user libraries, add it by default as -L
@@ -580,8 +574,12 @@ TODOs
   clang-3.4.bin: error: unknown argument: '-mpreferred-stack-boundary=2'
   clang-3.4.bin: error: unknown argument: '-falign-jumps=1'
   clang-3.4.bin: error: unknown argument: '-falign-loops=1'
-  Linking with the linker script doesn't work, gets linked regularly, and the result is a segfault.
+  Linking with the linker script doesn't work, gets linked regularly, and the
+  result is a segfault.
   __builtin_strlen acts really strangely.
+  Also pts-clang complains about -B flag with default xtiny.
+* TODO: Anomaly: Why is pts_lbsearch.xtiny (in pts-line-bisect) 6888 bytes when
+  compiled with clang-4.4, and only 6063 bytes when compiled with gcc-4.8?
 * TODO: pts-clang bug: no include paths in -E -.
 * TODO: Use glibc's smart __extern_always_inline instead?
 * TODO: Does __builtin_memcpy get hardwired with gcc -O3?
@@ -592,13 +590,14 @@ TODOs
 * TODO: Import syscalls from libsys (syscall-only libc, 1999). There is
   socketcall, but no individual calls. What about constness etc.
   Maybe musl, dietlibc, uClibc?
-* TODO: doc: What are the similar projects?
-* TODO: Why is `xtiny gcc -g' ... `sstrip' output so large?
+* TODO: doc: What are the similar projects to xtiny?
+* TODO: Why is `xtiny gcc -g' ... `sstrip' output so large? (See above.)
 * TODO: Avoid the padding of _start.s with 0x90 etc. for __xtiny_environ
   (which is aligned to 4 bytes with 0x66, 0x90 for -mno-xtiny-linker-script).
-* TODO: copy some gcc flags from musl: gcc -m32 -std=c99 -nostdinc -ffreestanding -fexcess-precision=standard -frounding-math -D_XOPEN_SOURCE=700 -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections -march=i486 -mtune=generic -Werror=implicit-function-declaration -Werror=implicit-int -Werror=pointer-sign -Werror=pointer-arith
+* TODO: Copy some gcc flags from musl: -nostdinc -ffreestanding -fexcess-precision=standard -frounding-math -march=i486 -mtune=generic
+* TODO: Document some gcc warning flags from musl (some of them need a new gcc): -Werror=missing-declarations -Werror=implicit-function-declaration -Werror=implicit-int -Werror=pointer-sign -Werror=pointer-arith
 * TODO: use malloc_lite (and calloc_lite) if no free
-* TODO: why is pts_lbsearch.xtiny (in pts-line-bisect) 6888 bytes when
-  compiled with clang-4.4, and only 6063 bytes when compiled with gcc-4.8?
+* TODO: Anomaly: Why does examples/addrnd.c compile to 512 bytes with g++-4.8,
+  rather than 441 bytes with gcc-4.8? What's the difference in code generation?
 
 __END__
