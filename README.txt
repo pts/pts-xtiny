@@ -257,6 +257,10 @@ See examples/multi_trampoline.c, which prepares the Linux process state
 program using execve(). Compiled executable size is between 400 and 700
 bytes, depending on the command-line flags.
 
+See https://github.com/pts/ssh_connect_fast , which implements a trampoline
+wrapper around ssh(1), changing environment variables and commend-line flags
+for faster connection setup. Compiled executable size is 1693 bytes.
+
 See https://github.com/pts/pts-zcat/blob/master/compile_xtiny.sh , which
 implements a .gz, .zip and Flate decompression filter (stdin-to-stdout).
 Compiled executable size is 4600 bytes.
@@ -277,7 +281,7 @@ executable size is 9052 bytes.
 See https://github.com/pts/pts-tiny-7z-sfx , which implements a .7z archive
 extractor and SFX. It doesn't use pts-xtiny directly, but features of
 pts-xtiny are inlined to its c-minidiet.sh and minidiet/* files. Compiled
-executable size is 24220 bytes; when compressed with UPX, it's 16552 bytes.
+executable size is 24220 bytes; when compressed with upx, it's 16552 bytes.
 
 Q22. Does pts-xtiny support -Wl,--gc-sections?
 """"""""""""""""""""""""""""""""""""""""""""""
