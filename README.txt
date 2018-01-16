@@ -607,6 +607,10 @@ TODOs
 ~~~~~
 * TODO: Anomaly: Diagnose file size anomalies in TODO in
   https://github.com/pts/pts-clang-xstatic/blob/master/mktrampolines-minidiet
+  Example anomaly: With OUTPUT_FORMAT(binary) in the linker script, GNU ld ignores --gc-sections, see https://stackoverflow.com/q/41930865/97248 .
+  Example anomaly: With OUTPUT_FORMAT(binary) in the linker script, GNU ld doesn't unify string constants "foobar" and "bar".
+    for "..." gcc (-O0) emits: .section .rodata, and GNU ld will not unify string constants
+    for "..." gcc -O1 emits: .section .rodata.str1.1,"aMS",@progbits,1, and GNU ld will unify string constants with OUTPUT_FORMAT(elf32-i386)
 * TODO: Provide a non-inline version of puts in lib__xtiny.a.
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
