@@ -611,6 +611,11 @@ TODOs
   Example anomaly: With OUTPUT_FORMAT(binary) in the linker script, GNU ld doesn't unify string constants "foobar" and "bar".
     for "..." gcc (-O0) emits: .section .rodata, and GNU ld will not unify string constants
     for "..." gcc -O1 emits: .section .rodata.str1.1,"aMS",@progbits,1, and GNU ld will unify string constants with OUTPUT_FORMAT(elf32-i386)
+  Example anomaly: With OUTPUT_FORMAT(elf32-i386), PT_GNU_STACK is added to the ELF program headers, making the output file 32 bytes longer.
+    How to remove it: (https://stackoverflow.com/q/41901847/97248)
+    * can work: post-process the .s file, remove `.section .note.GNU-stack,"",@progbits' line
+    * doesn't work, no such flag: pass a flag to gcc so that it won't generate the `.section .note.GNU-stack,"",@progbits' line
+    * doesn't work, no such flag: pass a flag to ld so that it ignores the stack directives in the .o file
 * TODO: Provide a non-inline version of puts in lib__xtiny.a.
 * TODO: Why are there \0s at the end of tgen? Can't we move them to bss? Add .py code to truncate.
 * TODO: Why is the file large with (Q14): `xtiny gcc -g' + `sstrip'?
