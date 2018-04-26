@@ -765,6 +765,7 @@ _syscall1(int,uname,struct utsname*,buf)
 _syscall2(int,lstat64,const char*,path,struct stat64*,buf)
 _syscall2(int,stat64,const char*,path,struct stat64*,buf)
 _syscall1(int,pipe,int*,pipefd)
+_syscall2(int,dup2,int,oldfd,int,newfd)
 
 /* --- System call convenience functions. */
 
