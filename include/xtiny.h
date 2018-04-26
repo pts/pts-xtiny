@@ -764,6 +764,7 @@ _syscall0_nomemory(pid_t,fork)
 _syscall1(int,uname,struct utsname*,buf)
 _syscall2(int,lstat64,const char*,path,struct stat64*,buf)
 _syscall2(int,stat64,const char*,path,struct stat64*,buf)
+_syscall1(int,pipe,int*,pipefd)
 
 /* --- System call convenience functions. */
 
