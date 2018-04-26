@@ -557,6 +557,29 @@ def add_dir_from_path(prog):
   return prog
 
 
+def does_contain_linker_plugin(cmd):
+  """Returns bool indicating whether the compiler supports
+  -fno-use-linker-plugin.
+
+  gcc-4.8 doesn't support it, gcc-6.4 and gcc-7.3 do. Without
+  -fno-use-linker-plugin in these compilers, linking fails with ld.xtiny
+  (because that ld doesn't support amd64 plugins, and we don't want the
+  system gcc plugins interfere with xtiny linking anyway).
+  """
+  cmd = list(cmd)
+  cmd.append('-dumpspecs')
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+  try:
+    data = p.stdout.read()
+  finally:
+    exit_code = p.wait()
+  if exit_code:
+    sys.stderr.write(
+        'fatal: Running %s failed with code %d\n' % (cmd[0], exit_code))
+    sys.exit(4)
+  return '!fno-use-linker-plugin:' in data
+
+
 def main(argv):
   if len(argv) < 2 or argv[1] == '--help':
     sys.stderr.write(
@@ -843,6 +866,8 @@ def main(argv):
   elif is_compiling:  # Just for the assembler (adir/as --> as.xtiny).
     cmd.extend(('-B', '%s/adir' % progdir))
   if do_link:
+    if does_contain_linker_plugin(cmd):
+      cmd.append('-fno-use-linker-plugin')  # For gcc-6 and gcc-7.
     # -s is not necessary here, it would be passed as `ld -s', but `ld -T'
     # with the linker script overrides that. We specigy -s anyway so that it
     # will work with linkers ignoring the -T flag (e.g. GNU gold).

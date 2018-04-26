@@ -87,8 +87,9 @@ http://ptspts.blogspot.ch/2013/12/how-to-make-smaller-c-and-c-binaries.html
 
 Q2. Which compilers are supported?
 """"""""""""""""""""""""""""""""""
-gcc-4.4 and later, and clang-3.0 and later. Probably it would be possible to
-make it work with gcc-4.3, gcc-4.2 and gcc-4.1 if there is interest.
+gcc-4.4 and later (including gcc-4.8, gcc-6.4 and gcc-7.3), and clang-3.0
+and later. Probably it would be possible to make it work with gcc-4.3,
+gcc-4.2 and gcc-4.1 if there is interest.
 
 pts-xtiny includes a linker (ld.xtiny) and an assembler (as.xtiny), and it
 doesn't use the GNU Binutils installed to your system. Thus your Binutils
@@ -498,6 +499,16 @@ Use it as: `xtiny .../pts-clang/bin/clang ...'.
 
 You can also put pts-clang/bin/clang to (the beginning of) your $PATH, and
 then use it as: `xtiny clang ...'.
+
+Q37. Which version of GCC should I use?
+"""""""""""""""""""""""""""""""""""""""
+gcc-4.8.4 tends to create smaller files than gcc-7.3.0 in some cases, for
+example for this command:
+
+  $ xtiny gcc -Os -W -Wall examples/addrnd.c
+
+So to get the smallest file size, try multiple versions of GCC starting from
+gcc-4.8.4 .
 
 Technical notes
 ~~~~~~~~~~~~~~~
