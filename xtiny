@@ -806,6 +806,9 @@ def main(argv):
       # To avoid this (which only appears with `clang -c' and `clang -S':
       # argument clang-3.3.bin: warning: argument unused during compilation: '-fno-ident'
       cmd.append('-Qunused-arguments')
+    # We shouldn't be adding -fno-pic if -fPIC, -fpic, -fPIE or -fpie is
+    # specified, but that's not supported by xtiny anyway.
+    cmd.append('-fno-pic')
     if opt is not None:
       cmd.append(opt)
     # Without this we get the following error compiling binutils 2.20.1:
