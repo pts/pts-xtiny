@@ -288,7 +288,7 @@ program using execve(). Compiled executable size is between 400 and 700
 bytes, depending on the command-line flags.
 
 See https://github.com/pts/ssh_connect_fast , which implements a trampoline
-wrapper around ssh(1), changing environment variables and commend-line flags
+wrapper around ssh(1), changing environment variables and command-line flags
 for faster connection setup. Compiled executable size is 1693 bytes.
 
 See https://github.com/pts/pts-zcat/blob/master/compile_xtiny.sh , which
@@ -309,9 +309,14 @@ for running gcc with specific flags for linking against uClibc. Compiled
 executable size is 9052 bytes.
 
 See https://github.com/pts/pts-tiny-7z-sfx , which implements a .7z archive
-extractor and SFX. It doesn't use pts-xtiny directly, but features of
-pts-xtiny are inlined to its c-minidiet.sh and minidiet/* files. Compiled
-executable size is 24220 bytes; when compressed with upx, it's 16552 bytes.
+extractor and self-extractor (SFX). It doesn't use pts-xtiny directly, but
+features of pts-xtiny are inlined to its c-minidiet.sh and minidiet/* files.
+Compiled executable size is 24220 bytes; when compressed with upxbc, it's
+14640 bytes.
+
+See https://github.com/pts/muxzcat , which implements an .xz and .lzma
+decompression filter. Compiled executable size is 7376 bytes; when
+compressed with upxbc, it's 4678 bytes.
 
 Q22. Does pts-xtiny support -Wl,--gc-sections?
 """"""""""""""""""""""""""""""""""""""""""""""
