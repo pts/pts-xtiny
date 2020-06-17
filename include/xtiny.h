@@ -551,6 +551,8 @@ typedef unsigned long sigset_t;
 /* For xtiny.h */
 #define __NR_sys_exit __NR_exit
 #define __NR_sys_setgroups32 __NR_setgroups32
+#define __NR_sys_old_mmap __NR_mmap
+#define __NR_sys_mmap_pgoff __NR_mmap2
 
 #undef  __HAS_GCC_4_5
 #if defined(__GNUC_MINOR__) && __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 5
@@ -719,6 +721,7 @@ struct stat64;
 struct timeval;
 struct timezone;
 struct utsname;
+struct mmap_arg_struct;
 
 _syscall1_nomemory(int,close,int,fd)
 /* libc also allows a 2-argument open, but we don't (for tiny output).
@@ -766,6 +769,12 @@ _syscall2(int,lstat64,const char*,path,struct stat64*,buf)
 _syscall2(int,stat64,const char*,path,struct stat64*,buf)
 _syscall1(int,pipe,int*,pipefd)
 _syscall2(int,dup2,int,oldfd,int,newfd)
+_syscall1(void*,sys_old_mmap,struct mmap_arg_struct*,arg)
+/* The last argument should be 32 bits. */
+_syscall6(void*,sys_mmap_pgoff,void*,addr,size_t,length,int,prot,int,flags,int,fd,off_t,offset)
+_syscall6(void*,mmap2,void*,addr,size_t,length,int,prot,int,flags,int,fd,off_t,offset)
+_syscall2(int,munmap,void*,addr,size_t,length)
+_syscall5(void*,mremap,void*,old_address,size_t,old_size,size_t,new_size,int,flags,void*,new_address)
 
 /* --- System call convenience functions. */
 
@@ -786,7 +795,7 @@ extern void exit(int __exitcode) __asm__("__xtiny_exit_with_fini") __attribute__
 extern void _exit(int __exitcode) __asm__("__xtiny_exit") __attribute__((noreturn, nothrow, regparm(1)));
 extern void _Exit(int __exitcode) __asm__("__xtiny_exit") __attribute__((noreturn, nothrow, regparm(1)));
 
-static __inline__ int setgroups(int __s, const gid_t *__l) {
+__attribute__((__nothrow__)) static __inline__ int setgroups(int __s, const gid_t *__l) {
   return sys_setgroups32(__s, __l);
 }
 __attribute__((__nothrow__)) static __inline__ off64_t lseek64(
@@ -794,6 +803,10 @@ __attribute__((__nothrow__)) static __inline__ off64_t lseek64(
   off64_t result;
   return _llseek(fd, offset >> 32, (off_t)offset, &result, whence) == 0 ?
       result : -1;
+}
+
+__attribute__((__nothrow__)) static __inline__ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  return sys_mmap_pgoff(addr, length, prot, flags, fd, offset >> 12);
 }
 
 /* TODO(pts): Which functions should we add __attribute__leaf to? */
@@ -1044,6 +1057,25 @@ static __inline__ int puts(const char *__s) {
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
+
+/* --- */
+
+#define PROT_READ	0x1
+#define PROT_WRITE	0x2
+#define PROT_EXEC	0x4
+#define PROT_NONE	0x0
+#define PROT_GROWSDOWN	0x01000000
+#define PROT_GROWSUP	0x02000000
+#define MAP_SHARED	0x01
+#define MAP_PRIVATE	0x02
+#define MAP_TYPE	0x0f
+#define MAP_FIXED	0x10
+#define MAP_FILE	0
+#define MAP_ANONYMOUS	0x20
+#define MAP_ANON	0x20
+#define MREMAP_MAYMOVE	1
+#define MREMAP_FIXED	2
+
 /* --- structs
  *
  * Please note that struct stat etc. defined in
@@ -1114,6 +1146,15 @@ struct timeval {
 struct timezone {
   int tz_minuteswest;
   int tz_dsttime;
+};
+
+struct mmap_arg_struct {
+  unsigned long addr;
+  unsigned long len;
+  unsigned long prot;
+  unsigned long flags;
+  unsigned long fd;
+  unsigned long offset;
 };
 
 /* --- */
