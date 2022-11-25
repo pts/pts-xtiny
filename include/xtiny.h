@@ -921,7 +921,11 @@ void free(void *ptr);
 void *realloc(void *ptr, size_t size);
 #endif
 
-
+/* ctype.h functions. */
+extern int isalpha(int c) __attribute__((regparm(1)));
+extern int isdigit(int c) __attribute__((regparm(1)));
+extern int isxdigit(int c) __attribute__((regparm(1)));
+extern int isspace(int c) __attribute__((regparm(1)));
 
 #define ATEXIT_MAX 1
 /* Only one hook registration, subsequent ones return -1 (error).

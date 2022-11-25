@@ -19,6 +19,10 @@ FILES_S_IN_ORDER='
     misc/__xtiny_errno.s
     misc/abort.s
     misc/atexit.s
+    ctype/isalpha.s
+    ctype/isdigit.s
+    ctype/isspace.s
+    ctype/isxdigit.s
     string/memccpy.s
     string/memchr.s
     string/memcmp.s
