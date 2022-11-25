@@ -9,10 +9,10 @@
 isspace:  /* __attribute__((regparm(1))) int isspace(int c); */
 	subb $9, %al
 	cmpb $13-9+1, %al
-	jc .d2
+	jc 1f
 	subb $32-9, %al
 	cmpb $1, %al
-.d2:	sbbl %eax, %eax
+1:	sbbl %eax, %eax
 	negl %eax
 	ret
 .size	isspace, .-isspace

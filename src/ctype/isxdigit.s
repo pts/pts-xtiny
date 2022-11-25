@@ -9,11 +9,11 @@
 isxdigit:  /* __attribute__((regparm(1))) int isxdigit(int c); */
 	subb $48, %al
 	cmpb $10, %al
-	jc .d1
+	jc 1f
 	orb $32, %al
 	subb $49, %al
 	cmpb $6, %al
-.d1:	sbbl %eax, %eax
+1:	sbbl %eax, %eax
 	negl %eax
 	ret
 .size	isxdigit, .-isxdigit
