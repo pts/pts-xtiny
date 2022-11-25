@@ -728,6 +728,7 @@ _syscall1_nomemory(int,close,int,fd)
  * Just specify mode == 0.
  */
 _syscall3(int,open,const char *,pathname,int,flags,mode_t,mode)
+_syscall2(int,creat,const char *,pathname,mode_t,mode)  /* creat(pathname, mode) is equivalent to open(pathname, O_CREAT | O_WRONLY | O_TRUNC, mode). */
 _syscall1(int,chdir,const char*,dir)
 _syscall1(int,chroot,const char*,dir)
 /* Don't call sys_exit, but call _exit, because _exit uses 1 byte less. */
