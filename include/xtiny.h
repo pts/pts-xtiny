@@ -760,6 +760,8 @@ _syscall2(int,fstat,int,fd,struct stat*,buf)
 _syscall2(int,mkdir,const char*,pathname,mode_t,mode)
 _syscall2(int,symlink,const char*,oldpath,const char*,newpath)
 _syscall1(int,unlink,const char*,pathname)
+#define __NR_remove __NR_unlink  /* Make remove(...) an alias for unlink(...). */
+_syscall1(int,remove,const char*,pathname)
 _syscall2(int,utimes,const char*,filename,const struct timeval*,times)
 _syscall3(ssize_t,readlink,const char*,path,char*,buf,size_t,bufsiz)
 _syscall3(pid_t,waitpid,pid_t,pid,int*,status,int,options);
