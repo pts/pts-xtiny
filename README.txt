@@ -314,6 +314,10 @@ features of pts-xtiny are inlined to its c-minidiet.sh and minidiet/* files.
 Compiled executable size is 24220 bytes; when compressed with upxbc, it's
 14640 bytes.
 
+See https://github.com/pts/mininasm, which implements a NASM-compatible
+assembler for 8086. Compiled executable size is 20580 bytes; when compressed
+with upxbc, it's 13796 bytes.
+
 See https://github.com/pts/muxzcat , which implements an .xz and .lzma
 decompression filter. Compiled executable size is 7376 bytes; when
 compressed with upxbc, it's 4678 bytes.
